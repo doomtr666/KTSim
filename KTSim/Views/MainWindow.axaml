@@ -15,6 +15,28 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-    <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+  <ItemsControl ItemsSource="{Binding Items}">
+    <ItemsControl.ItemsPanel>
+      <ItemsPanelTemplate>
+        <Canvas/>
+      </ItemsPanelTemplate>
+    </ItemsControl.ItemsPanel>
+
+    <ItemsControl.Styles>
+      <Style Selector="ContentPresenter" x:DataType="vm:IShape">
+        <Setter Property="Canvas.Left" Value="{Binding X}"/>
+        <Setter Property="Canvas.Top" Value="{Binding Y}" />
+      </Style>
+    </ItemsControl.Styles>
+
+    <ItemsControl.DataTemplates>
+      <DataTemplate x:DataType="vm:Circle">
+        <Ellipse Stroke="{Binding Color}" StrokeThickness="2" Fill="Transparent" Width="{Binding Radius}" Height="{Binding Radius}"></Ellipse>
+      </DataTemplate>
+      <DataTemplate x:DataType="vm:Rectangle">
+        <Rectangle Stroke="{Binding Color}" StrokeThickness="2" Fill="Transparent" Width="{Binding Width}" Height="{Binding Height}"></Rectangle>
+      </DataTemplate>
+    </ItemsControl.DataTemplates>
+  </ItemsControl>
 
 </Window>
