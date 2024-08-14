@@ -7,9 +7,9 @@ public class KillZone
     public const int OfficialGridHeight = 22;
 
     // metric size
-    public const float GridSquareSize = 25.4f;
-    public const float TotalWidth = OfficialGridWidth * GridSquareSize;
-    public const float TotalHeight = OfficialGridHeight * GridSquareSize;
+    public const float GridStep = 25.4f;
+    public const float TotalWidth = OfficialGridWidth * GridStep;
+    public const float TotalHeight = OfficialGridHeight * GridStep;
 
     public const float CenterX = TotalWidth / 2;
     public const float CenterY = TotalHeight / 2;
@@ -22,10 +22,10 @@ public class KillZone
     public const int GridHeight = OfficialGridHeight * OverSamplingFactor;
 
     // KT distances
-    public const float TriangleDistance = 1.0f * GridSquareSize;
-    public const float CircleDistance = 2.0f * GridSquareSize;
-    public const float SquareDistance = 3.0f * GridSquareSize;
-    public const float PentagonDistance = 6.0f * GridSquareSize;
+    public const float TriangleDistance = 1.0f * GridStep;
+    public const float CircleDistance = 2.0f * GridStep;
+    public const float SquareDistance = 3.0f * GridStep;
+    public const float PentagonDistance = 6.0f * GridStep;
 
     public DropZone[] DropZones { get { return _dropZones.ToArray(); } }
     public Objective[] Objectives { get { return _objectives.ToArray(); } }
@@ -51,7 +51,23 @@ public class KillZone
         _objectives.Add(new Objective(new Position(SquareDistance, CenterY + CircleDistance)));
         _objectives.Add(new Objective(new Position(TotalWidth - SquareDistance, CenterY - CircleDistance)));
 
+        // add terrains
+        _terrains.Add(new Terrain(TerrainType.Heavy, new Position(CenterX, CenterY), 0, 3 * CircleDistance, 2 * CircleDistance));
+
+        _terrains.Add(new Terrain(TerrainType.Heavy, new Position(SquareDistance + TriangleDistance, PentagonDistance), 0, 2 * CircleDistance, 2 * CircleDistance));
+        _terrains.Add(new Terrain(TerrainType.Heavy, new Position(TotalWidth - TriangleDistance - SquareDistance, TotalHeight - PentagonDistance), 0, 2 * CircleDistance, 2 * CircleDistance));
+
+        _terrains.Add(new Terrain(TerrainType.Heavy, new Position(TotalWidth - TriangleDistance - SquareDistance, PentagonDistance - TriangleDistance), 0, 2 * CircleDistance, CircleDistance));
+        _terrains.Add(new Terrain(TerrainType.Heavy, new Position(SquareDistance + TriangleDistance, TotalHeight - PentagonDistance + TriangleDistance), 0, 2 * CircleDistance, CircleDistance));
+
+        _terrains.Add(new Terrain(TerrainType.Light | TerrainType.Traversable, new Position(CenterX + PentagonDistance, CenterY - 4.5f * GridStep), 0, TriangleDistance, PentagonDistance));
+        _terrains.Add(new Terrain(TerrainType.Light | TerrainType.Traversable, new Position(CenterX - PentagonDistance, CenterY + 4.5f * GridStep), 0, TriangleDistance, PentagonDistance));
+
+        _terrains.Add(new Terrain(TerrainType.Light | TerrainType.Traversable, new Position(CenterX - 5 * GridStep, CenterY - 5f * GridStep), 0, 4 * GridStep, TriangleDistance));
+        _terrains.Add(new Terrain(TerrainType.Light | TerrainType.Traversable, new Position(CenterX + 5 * GridStep, CenterY + 5f * GridStep), 0, 4 * GridStep, TriangleDistance));
+
         // add attackers
+
         for (var i = 0; i < 10; i++)
             _agents.Add(new KommandoBoy(new Position(30 + 40 * i, 30), Side.Attacker));
 

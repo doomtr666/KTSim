@@ -38,11 +38,11 @@
 
                 <ItemsControl.DataTemplates>
                     <DataTemplate x:DataType="vm:Circle">
-                        <Ellipse Stroke="{Binding Color}" StrokeThickness="0.5" Fill="{Binding Color}"
+                        <Ellipse Stroke="{Binding StrokeColor}" StrokeThickness="0.5" Fill="{Binding FillColor}"
                             Width="{Binding Width}" Height="{Binding Width}"></Ellipse>
                     </DataTemplate>
                     <DataTemplate x:DataType="vm:Rectangle">
-                        <Rectangle Stroke="{Binding Color}" StrokeThickness="0.5" Fill="{Binding Color}"
+                        <Rectangle Stroke="{Binding StrokeColor}" StrokeThickness="0.5" Fill="{Binding FillColor}"
                             Width="{Binding Width}" Height="{Binding Height}"></Rectangle>
                     </DataTemplate>
                 </ItemsControl.DataTemplates>

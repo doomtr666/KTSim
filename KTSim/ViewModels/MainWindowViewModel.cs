@@ -18,7 +18,8 @@ public class Circle : IShape
 
     public float Width { get; init; }
 
-    public string Color { get; init; } = "";
+    public string StrokeColor { get; init; } = "";
+    public string FillColor { get; init; } = "";
 }
 
 public class Rectangle : IShape
@@ -30,16 +31,12 @@ public class Rectangle : IShape
     public float Width { get; init; }
 
     public float Height { get; init; }
-
-    public string Color { get; init; } = "";
+    public string StrokeColor { get; init; } = "";
+    public string FillColor { get; init; } = "";
 }
 
 public partial class MainWindowViewModel : ViewModelBase
 {
-#pragma warning disable CA1822 // Mark members as static
-    public string Greeting => "Welcome to Avalonia!";
-#pragma warning restore CA1822 // Mark members as static
-
     public List<IShape> Items { get; } = [];
 
     private KillZone _killZone = new KillZone();
@@ -47,18 +44,45 @@ public partial class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel()
     {
         foreach (var dropZone in _killZone.DropZones)
-            Items.Add(new Rectangle { X = dropZone.Position.X, Y = dropZone.Position.Y, Width = dropZone.Width, Height = dropZone.Height, Color = dropZone.Side == Side.Attacker ? "Pink" : "LightBlue" });
+        {
+            var color = dropZone.Side == Side.Attacker ? "Pink" : "LightBlue";
+            Items.Add(CreateRectangle(dropZone.Position.X, dropZone.Position.Y, dropZone.Width, dropZone.Height, color, color));
+        }
 
         foreach (var objective in _killZone.Objectives)
-            Items.Add(CreateCircle((int)objective.Position.X, (int)objective.Position.Y, Objective.Radius, "Orange"));
+            Items.Add(CreateCircle((int)objective.Position.X, (int)objective.Position.Y, Objective.Radius, "Black", "Orange"));
+
+        foreach (var terrain in _killZone.Terrains)
+        {
+            var StrokeColor = "Black";
+            if (terrain.Type.HasFlag(TerrainType.Traversable))
+                StrokeColor = "Gray";
+
+            var fillColor = "";
+            if (terrain.Type.HasFlag(TerrainType.Heavy))
+                fillColor = "DarkGray";
+            else if (terrain.Type.HasFlag(TerrainType.Light))
+                fillColor = "LightGray";
+
+            Items.Add(CreateCenteredRectangle(terrain.Position.X, terrain.Position.Y, terrain.Width, terrain.Height, StrokeColor, fillColor));
+        }
 
         foreach (var agent in _killZone.Agents)
-            Items.Add(CreateCircle((int)agent.Position.X, (int)agent.Position.Y, agent.BaseDiameter / 2, agent.Side == Side.Attacker ? "Red" : "Blue"));
-
+            Items.Add(CreateCircle((int)agent.Position.X, (int)agent.Position.Y, agent.BaseDiameter / 2, "Black", agent.Side == Side.Attacker ? "Red" : "Blue"));
     }
 
-    Circle CreateCircle(int x, int y, float radius, string color)
+    Circle CreateCircle(float x, float y, float radius, string StrokeColor, string FillColor = "")
     {
-        return new Circle { X = x - radius, Y = y - radius, Width = 2 * radius, Color = color };
+        return new Circle { X = x - radius, Y = y - radius, Width = 2 * radius, StrokeColor = StrokeColor, FillColor = string.IsNullOrEmpty(FillColor) ? "Transparent" : FillColor };
+    }
+
+    Rectangle CreateRectangle(float x, float y, float width, float height, string StrokeColor, string FillColor = "")
+    {
+        return new Rectangle { X = x, Y = y, Width = width, Height = height, StrokeColor = StrokeColor, FillColor = string.IsNullOrEmpty(FillColor) ? "Transparent" : FillColor };
+    }
+
+    Rectangle CreateCenteredRectangle(float x, float y, float width, float height, string StrokeColor, string FillColor = "")
+    {
+        return new Rectangle { X = x - width / 2, Y = y - height / 2, Width = width, Height = height, StrokeColor = StrokeColor, FillColor = string.IsNullOrEmpty(FillColor) ? "Transparent" : FillColor };
     }
 }
