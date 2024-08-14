@@ -1,42 +1,55 @@
 <Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:KTSim.Gui.ViewModels"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-        x:Class="KTSim.Gui.Views.MainWindow"
-        x:DataType="vm:MainWindowViewModel"
-        Icon="/Assets/avalonia-logo.ico"
-        Title="KTSim.Gui">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:KTSim.Gui.ViewModels"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+    x:Class="KTSim.Gui.Views.MainWindow"
+    xmlns:paz="using:Avalonia.Controls.PanAndZoom"
+    x:DataType="vm:MainWindowViewModel"
+    Icon="/Assets/avalonia-logo.ico"
+    Title="Kill Team Simulator">
 
     <Design.DataContext>
         <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-        <vm:MainWindowViewModel/>
+             to set the actual DataContext for runtime, set the DataContext property in code (look at
+        App.axaml.cs -->
+        <vm:MainWindowViewModel />
     </Design.DataContext>
 
-  <ItemsControl ItemsSource="{Binding Items}">
-    <ItemsControl.ItemsPanel>
-      <ItemsPanelTemplate>
-        <Canvas/>
-      </ItemsPanelTemplate>
-    </ItemsControl.ItemsPanel>
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+        <paz:ZoomBorder Name="ZoomBorder" Stretch="None" ZoomSpeed="1.1"
+            Background="LightGray" ClipToBounds="True" Focusable="True"
+            VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
 
-    <ItemsControl.Styles>
-      <Style Selector="ContentPresenter" x:DataType="vm:IShape">
-        <Setter Property="Canvas.Left" Value="{Binding X}"/>
-        <Setter Property="Canvas.Top" Value="{Binding Y}" />
-      </Style>
-    </ItemsControl.Styles>
+            <ItemsControl ItemsSource="{Binding Items}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas Background="White" Width="762" Height="559" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
 
-    <ItemsControl.DataTemplates>
-      <DataTemplate x:DataType="vm:Circle">
-        <Ellipse Stroke="{Binding Color}" StrokeThickness="2" Fill="Transparent" Width="{Binding Radius}" Height="{Binding Radius}"></Ellipse>
-      </DataTemplate>
-      <DataTemplate x:DataType="vm:Rectangle">
-        <Rectangle Stroke="{Binding Color}" StrokeThickness="2" Fill="Transparent" Width="{Binding Width}" Height="{Binding Height}"></Rectangle>
-      </DataTemplate>
-    </ItemsControl.DataTemplates>
-  </ItemsControl>
+                <ItemsControl.Styles>
+                    <Style Selector="ContentPresenter" x:DataType="vm:IShape">
+                        <Setter Property="Canvas.Left" Value="{Binding X}" />
+                        <Setter Property="Canvas.Top" Value="{Binding Y}" />
+                    </Style>
+                </ItemsControl.Styles>
+
+                <ItemsControl.DataTemplates>
+                    <DataTemplate x:DataType="vm:Circle">
+                        <Ellipse Stroke="{Binding Color}" StrokeThickness="0.5" Fill="{Binding Color}"
+                            Width="{Binding Width}" Height="{Binding Width}"></Ellipse>
+                    </DataTemplate>
+                    <DataTemplate x:DataType="vm:Rectangle">
+                        <Rectangle Stroke="{Binding Color}" StrokeThickness="0.5" Fill="{Binding Color}"
+                            Width="{Binding Width}" Height="{Binding Height}"></Rectangle>
+                    </DataTemplate>
+                </ItemsControl.DataTemplates>
+            </ItemsControl>
+
+        </paz:ZoomBorder>
+    </ScrollViewer>
+
 
 </Window>
