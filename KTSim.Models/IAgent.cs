@@ -10,7 +10,7 @@ public interface IAgent
 {
     string Name { get; }
     float BaseDiameter { get; }
-    Position Position { get; }
+    Position Position { get; set; }
     float Movement { get; }
     Side Side { get; }
 }

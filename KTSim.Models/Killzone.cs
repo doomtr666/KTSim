@@ -39,11 +39,18 @@ public class KillZone
 
     public KillZone()
     {
+        Reset();
+    }
+
+    public void Reset()
+    {
         // add drop zones
+        _dropZones.Clear();
         _dropZones.Add(new DropZone(new Position(0, 0), TotalWidth, SquareDistance, Side.Attacker));
         _dropZones.Add(new DropZone(new Position(0, TotalHeight - SquareDistance), TotalWidth, SquareDistance, Side.Defender));
 
         // add objectives
+        _objectives.Clear();
         _objectives.Add(new Objective(new Position(CenterX + PentagonDistance, CenterY + CircleDistance)));
         _objectives.Add(new Objective(new Position(CenterX - PentagonDistance, CenterY - CircleDistance)));
         _objectives.Add(new Objective(new Position(CenterX, PentagonDistance)));
@@ -52,27 +59,36 @@ public class KillZone
         _objectives.Add(new Objective(new Position(TotalWidth - SquareDistance, CenterY - CircleDistance)));
 
         // add terrains
+        _terrains.Clear();
         _terrains.Add(new Terrain(TerrainType.Heavy, new Position(CenterX, CenterY), 0, 3 * CircleDistance, 2 * CircleDistance));
-
         _terrains.Add(new Terrain(TerrainType.Heavy, new Position(SquareDistance + TriangleDistance, PentagonDistance), 0, 2 * CircleDistance, 2 * CircleDistance));
         _terrains.Add(new Terrain(TerrainType.Heavy, new Position(TotalWidth - TriangleDistance - SquareDistance, TotalHeight - PentagonDistance), 0, 2 * CircleDistance, 2 * CircleDistance));
-
         _terrains.Add(new Terrain(TerrainType.Heavy, new Position(TotalWidth - TriangleDistance - SquareDistance, PentagonDistance - TriangleDistance), 0, 2 * CircleDistance, CircleDistance));
         _terrains.Add(new Terrain(TerrainType.Heavy, new Position(SquareDistance + TriangleDistance, TotalHeight - PentagonDistance + TriangleDistance), 0, 2 * CircleDistance, CircleDistance));
-
         _terrains.Add(new Terrain(TerrainType.Light | TerrainType.Traversable, new Position(CenterX + PentagonDistance, CenterY - 4.5f * GridStep), 0, TriangleDistance, PentagonDistance));
         _terrains.Add(new Terrain(TerrainType.Light | TerrainType.Traversable, new Position(CenterX - PentagonDistance, CenterY + 4.5f * GridStep), 0, TriangleDistance, PentagonDistance));
-
         _terrains.Add(new Terrain(TerrainType.Light | TerrainType.Traversable, new Position(CenterX - 5 * GridStep, CenterY - 5f * GridStep), 0, 4 * GridStep, TriangleDistance));
         _terrains.Add(new Terrain(TerrainType.Light | TerrainType.Traversable, new Position(CenterX + 5 * GridStep, CenterY + 5f * GridStep), 0, 4 * GridStep, TriangleDistance));
 
+        _agents.Clear();
         // add attackers
-
         for (var i = 0; i < 10; i++)
             _agents.Add(new KommandoBoy(new Position(30 + 40 * i, 30), Side.Attacker));
 
         // add defenders
         for (var i = 0; i < 10; i++)
             _agents.Add(new VeteranTrooper(new Position(TotalWidth - 30 - 40 * i, TotalHeight - 30), Side.Defender));
+    }
+
+    public void NextStep()
+    {
+        // randomly move agents
+        Random random = new Random();
+        var agentIndex = random.Next() % _agents.Count;
+
+        var deltaX = (float)(random.NextDouble() * 2 - 1) * GridStep;
+        var deltaY = (float)(random.NextDouble() * 2 - 1) * GridStep;
+
+        _agents[agentIndex].Position = new Position(_agents[agentIndex].Position.X + deltaX, _agents[agentIndex].Position.Y + deltaY);
     }
 }

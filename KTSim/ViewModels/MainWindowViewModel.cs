@@ -1,48 +1,53 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.ObjectModel;
+using Avalonia.Threading;
 using KTSim.Models;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace KTSim.Gui.ViewModels;
 
-public interface IShape
-{
-    public float X { get; }
-
-    public float Y { get; }
-}
-
-public class Circle : IShape
-{
-    public float X { get; init; }
-
-    public float Y { get; init; }
-
-    public float Width { get; init; }
-
-    public string StrokeColor { get; init; } = "";
-    public string FillColor { get; init; } = "";
-}
-
-public class Rectangle : IShape
-{
-    public float X { get; init; }
-
-    public float Y { get; init; }
-
-    public float Width { get; init; }
-
-    public float Height { get; init; }
-    public string StrokeColor { get; init; } = "";
-    public string FillColor { get; init; } = "";
-}
-
 public partial class MainWindowViewModel : ViewModelBase
 {
-    public List<IShape> Items { get; } = [];
+    [ObservableProperty]
+    ObservableCollection<IShape> _items = [];
 
     private KillZone _killZone = new KillZone();
 
+    private DispatcherTimer _timer;
+
     public MainWindowViewModel()
     {
+        _timer = new DispatcherTimer(TimeSpan.FromMilliseconds(10), DispatcherPriority.Normal, (s, e) => NextStep());
+        _timer.Start();
+
+        Render();
+    }
+
+    void NextStep()
+    {
+        _killZone.NextStep();
+        Render();
+    }
+
+    Circle CreateCircle(float x, float y, float radius, string StrokeColor, string FillColor = "")
+    {
+        return new Circle { X = x - radius, Y = y - radius, Width = 2 * radius, StrokeColor = StrokeColor, FillColor = string.IsNullOrEmpty(FillColor) ? "Transparent" : FillColor };
+    }
+
+    Rectangle CreateRectangle(float x, float y, float width, float height, string StrokeColor, string FillColor = "")
+    {
+        return new Rectangle { X = x, Y = y, Width = width, Height = height, StrokeColor = StrokeColor, FillColor = string.IsNullOrEmpty(FillColor) ? "Transparent" : FillColor };
+    }
+
+    Rectangle CreateCenteredRectangle(float x, float y, float width, float height, string StrokeColor, string FillColor = "")
+    {
+        return new Rectangle { X = x - width / 2, Y = y - height / 2, Width = width, Height = height, StrokeColor = StrokeColor, FillColor = string.IsNullOrEmpty(FillColor) ? "Transparent" : FillColor };
+    }
+
+    void Render()
+    {
+        Items.Clear();
+
         foreach (var dropZone in _killZone.DropZones)
         {
             var color = dropZone.Side == Side.Attacker ? "Pink" : "LightBlue";
@@ -69,20 +74,5 @@ public partial class MainWindowViewModel : ViewModelBase
 
         foreach (var agent in _killZone.Agents)
             Items.Add(CreateCircle((int)agent.Position.X, (int)agent.Position.Y, agent.BaseDiameter / 2, "Black", agent.Side == Side.Attacker ? "Red" : "Blue"));
-    }
-
-    Circle CreateCircle(float x, float y, float radius, string StrokeColor, string FillColor = "")
-    {
-        return new Circle { X = x - radius, Y = y - radius, Width = 2 * radius, StrokeColor = StrokeColor, FillColor = string.IsNullOrEmpty(FillColor) ? "Transparent" : FillColor };
-    }
-
-    Rectangle CreateRectangle(float x, float y, float width, float height, string StrokeColor, string FillColor = "")
-    {
-        return new Rectangle { X = x, Y = y, Width = width, Height = height, StrokeColor = StrokeColor, FillColor = string.IsNullOrEmpty(FillColor) ? "Transparent" : FillColor };
-    }
-
-    Rectangle CreateCenteredRectangle(float x, float y, float width, float height, string StrokeColor, string FillColor = "")
-    {
-        return new Rectangle { X = x - width / 2, Y = y - height / 2, Width = width, Height = height, StrokeColor = StrokeColor, FillColor = string.IsNullOrEmpty(FillColor) ? "Transparent" : FillColor };
     }
 }
