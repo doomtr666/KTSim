@@ -11,10 +11,14 @@ public class KommandoBoy : IAgent
     public Position Position { get; set; }
 
     public Side Side { get; }
+    public OrderType Order { get; set; }
+    public AgentState State { get; set; }
 
     public KommandoBoy(Position position, Side side)
     {
         Position = position;
         Side = side;
+        Order = OrderType.Engage;
+        State = AgentState.Ready;
     }
 }

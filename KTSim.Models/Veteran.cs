@@ -11,6 +11,8 @@ public class VeteranTrooper : IAgent
     public Position Position { get; set; }
 
     public Side Side { get; }
+    public OrderType Order { get; set; }
+    public AgentState State { get; set; }
 
     public VeteranTrooper(Position position, Side side)
     {

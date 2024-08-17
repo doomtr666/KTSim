@@ -3,23 +3,16 @@
 public class KillZone
 {
     // size in inches
-    public const int OfficialGridWidth = 30;
-    public const int OfficialGridHeight = 22;
+    public const int GridWidth = 30;
+    public const int GridHeight = 22;
 
     // metric size
     public const float GridStep = 25.4f;
-    public const float TotalWidth = OfficialGridWidth * GridStep;
-    public const float TotalHeight = OfficialGridHeight * GridStep;
+    public const float TotalWidth = GridWidth * GridStep;
+    public const float TotalHeight = GridHeight * GridStep;
 
     public const float CenterX = TotalWidth / 2;
     public const float CenterY = TotalHeight / 2;
-
-    // oversampling factor
-    public const int OverSamplingFactor = 2;
-
-    // total oversampled grid size
-    public const int GridWidth = OfficialGridWidth * OverSamplingFactor;
-    public const int GridHeight = OfficialGridHeight * OverSamplingFactor;
 
     // KT distances
     public const float TriangleDistance = 1.0f * GridStep;

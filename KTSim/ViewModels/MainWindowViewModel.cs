@@ -17,7 +17,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
-        _timer = new DispatcherTimer(TimeSpan.FromMilliseconds(10), DispatcherPriority.Normal, (s, e) => NextStep());
+        _timer = new DispatcherTimer(TimeSpan.FromMilliseconds(500), DispatcherPriority.Normal, (s, e) => NextStep());
         _timer.Start();
 
         Render();
@@ -26,6 +26,7 @@ public partial class MainWindowViewModel : ViewModelBase
     void NextStep()
     {
         _killZone.NextStep();
+
         Render();
     }
 
@@ -48,15 +49,14 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         Items.Clear();
 
+        // drop zones
         foreach (var dropZone in _killZone.DropZones)
         {
             var color = dropZone.Side == Side.Attacker ? "Pink" : "LightBlue";
             Items.Add(CreateRectangle(dropZone.Position.X, dropZone.Position.Y, dropZone.Width, dropZone.Height, color, color));
         }
 
-        foreach (var objective in _killZone.Objectives)
-            Items.Add(CreateCircle((int)objective.Position.X, (int)objective.Position.Y, Objective.Radius, "Black", "Orange"));
-
+        // terrains
         foreach (var terrain in _killZone.Terrains)
         {
             var StrokeColor = "Black";
@@ -72,7 +72,27 @@ public partial class MainWindowViewModel : ViewModelBase
             Items.Add(CreateCenteredRectangle(terrain.Position.X, terrain.Position.Y, terrain.Width, terrain.Height, StrokeColor, fillColor));
         }
 
+        // objectives
+        foreach (var objective in _killZone.Objectives)
+            Items.Add(CreateCircle((int)objective.Position.X, (int)objective.Position.Y, Objective.Radius, "Black", "Orange"));
+
+        // agents
         foreach (var agent in _killZone.Agents)
             Items.Add(CreateCircle((int)agent.Position.X, (int)agent.Position.Y, agent.BaseDiameter / 2, "Black", agent.Side == Side.Attacker ? "Red" : "Blue"));
+
+#if false
+        // debug grid
+        var aiGrid = new AIGrid(_killZone);
+
+        for (var x = 0; x < AIGrid.GridWidth; x++)
+        {
+            for (var y = 0; y < AIGrid.GridHeight; y++)
+            {
+                if (aiGrid.CollisionGrid[x, y])
+                    Items.Add(CreateRectangle(x * AIGrid.GridStep, y * AIGrid.GridStep, AIGrid.GridStep, AIGrid.GridStep, "Black", "Transparent"));
+            }
+        }
+#endif
+
     }
 }
