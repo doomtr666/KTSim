@@ -78,7 +78,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // agents
         foreach (var agent in _killZone.Agents)
-            Items.Add(CreateCircle((int)agent.Position.X, (int)agent.Position.Y, agent.BaseDiameter / 2, "Black", agent.Side == Side.Attacker ? "Red" : "Blue"));
+            Items.Add(CreateCircle((int)agent.Position.X, (int)agent.Position.Y, agent.Type.BaseDiameter / 2, "Black", agent.Side == Side.Attacker ? "Red" : "Blue"));
 
 #if false
         // debug grid

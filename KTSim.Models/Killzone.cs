@@ -23,12 +23,19 @@ public class KillZone
     public DropZone[] DropZones { get { return _dropZones.ToArray(); } }
     public Objective[] Objectives { get { return _objectives.ToArray(); } }
     public ITerrain[] Terrains { get { return _terrains.ToArray(); } }
-    public IAgent[] Agents { get { return _agents.ToArray(); } }
+    public OperativeState[] Agents { get { return _agents.ToArray(); } }
 
     private List<DropZone> _dropZones = [];
     private List<Objective> _objectives = [];
     private List<ITerrain> _terrains = [];
-    private List<IAgent> _agents = [];
+    private List<OperativeState> _agents = [];
+    private List<OperativeStatus> _agentStates = [];
+
+    public uint TurningPoint { get; set; }
+
+    public Side SideTurn { get; set; }
+
+    public int GameCount { get; set; } = 0;
 
     public KillZone()
     {
@@ -65,23 +72,69 @@ public class KillZone
 
         _agents.Clear();
         // add attackers
+        var attacker = new KommandoBoyOperative();
         for (var i = 0; i < 10; i++)
-            _agents.Add(new KommandoBoy(new Position(30 + 40 * i, 30), Side.Attacker));
+        {
+            var agentState = new OperativeState(attacker, Side.Attacker, OperativeStatus.Ready, new Position(30 + 40 * i, 30));
+            _agents.Add(agentState);
+        }
 
         // add defenders
+        var defender = new VeteranTrooperOperative();
         for (var i = 0; i < 10; i++)
-            _agents.Add(new VeteranTrooper(new Position(TotalWidth - 30 - 40 * i, TotalHeight - 30), Side.Defender));
+        {
+            var agentState = new OperativeState(defender, Side.Defender, OperativeStatus.Ready, new Position(TotalWidth - 30 - 40 * i, TotalHeight - 30));
+            _agents.Add(agentState);
+        }
+
+        TurningPoint = 0;
+        SideTurn = InitiativeRoll();
     }
 
     public void NextStep()
     {
-        // randomly move agents
-        Random random = new Random();
-        var agentIndex = random.Next() % _agents.Count;
+        // turning point check
+        var readyAgents = _agents.Where(a => a.Status == OperativeStatus.Ready).ToArray();
+        if (readyAgents.Length == 0)
+        {
+            TurningPoint++;
+            SideTurn = InitiativeRoll();
+        }
 
-        var deltaX = (float)(random.NextDouble() * 2 - 1) * GridStep;
-        var deltaY = (float)(random.NextDouble() * 2 - 1) * GridStep;
+        // end of game check
+        if (TurningPoint >= 4)
+        {
+            GameCount++;
+            Reset();
+        }
 
-        _agents[agentIndex].Position = new Position(_agents[agentIndex].Position.X + deltaX, _agents[agentIndex].Position.Y + deltaY);
+        // Get Next Action
+        var action = NextRandomAction();
+
+        // Execute Action
+
+        // Update Agent States
     }
+
+    public Side InitiativeRoll()
+    {
+        var values = Enum.GetValues(typeof(Side));
+        return (Side)values.GetValue(Random.Shared.Next(values.Length))!;
+    }
+
+    public AIAction? NextRandomAction()
+    {
+        var rand = Random.Shared;
+
+        // randomly select a ready agent
+        var readyAgents = _agents.Where(a => a.Status == OperativeStatus.Ready && a.Side == SideTurn).OrderBy(a => rand.Next()).ToArray();
+        if (readyAgents.Length == 0)
+            return null;
+
+        var agent = readyAgents[0];
+
+        // randomly select actions
+        return null;
+    }
+
 }
