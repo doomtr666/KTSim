@@ -3,7 +3,7 @@ namespace KTSim.Models;
 public enum OperativeActionType
 {
     Move,
-    Sprint,
+    Dash,
     Shoot,
 }
 
@@ -15,21 +15,35 @@ public interface IOperativeAction
 public class OperativeMoveAction : IOperativeAction
 {
     public OperativeActionType Type => OperativeActionType.Move;
-    public float MoveX { get; set; }
-    public float MoveY { get; set; }
+
+    public Position Destination { get; set; }
+
+    public override string ToString()
+    {
+        return $"Move To ({Destination.X},{Destination.Y})";
+    }
 }
 
-public class OperativeSprintAction : IOperativeAction
+public class OperativeDashAction : IOperativeAction
 {
-    public OperativeActionType Type => OperativeActionType.Sprint;
-    public float MoveX { get; set; }
-    public float MoveY { get; set; }
+    public OperativeActionType Type => OperativeActionType.Dash;
+    public Position Destination { get; set; }
+
+    public override string ToString()
+    {
+        return $"Dash To ({Destination.X}{Destination.Y})";
+    }
 }
 
 public class OperativeShootAction : IOperativeAction
 {
     public OperativeActionType Type => OperativeActionType.Shoot;
     public int TargetIndex { get; set; }
+
+    public override string ToString()
+    {
+        return $"Shoot At ({TargetIndex})";
+    }
 }
 
 public class AIAction
