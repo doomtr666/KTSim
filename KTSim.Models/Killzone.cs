@@ -1,7 +1,11 @@
-﻿namespace KTSim.Models;
+﻿using Microsoft.Extensions.Logging;
+
+namespace KTSim.Models;
 
 public class KillZone
 {
+    ILogger<KillZone> _log;
+
     // size in inches
     public const int GridWidth = 30;
     public const int GridHeight = 22;
@@ -39,6 +43,18 @@ public class KillZone
 
     public KillZone()
     {
+        // logger
+        using var factory = LoggerFactory.Create(builder => builder
+            .AddFilter("KilZone", LogLevel.Debug)
+            .AddSimpleConsole(options =>
+            {
+                options.IncludeScopes = true;
+                options.SingleLine = true;
+                options.TimestampFormat = "HH:mm:ss.fff ";
+            }));
+
+        _log = factory.CreateLogger<KillZone>();
+
         Reset();
     }
 
@@ -89,6 +105,8 @@ public class KillZone
 
         TurningPoint = 0;
         SideTurn = InitiativeRoll();
+
+        _log.LogInformation($"Match {GameCount} started, {SideTurn} have the initiative");
     }
 
     public void NextStep()
@@ -99,27 +117,49 @@ public class KillZone
         {
             TurningPoint++;
             SideTurn = InitiativeRoll();
-        }
 
-        // end of game check
-        if (TurningPoint >= 4)
-        {
-            GameCount++;
-            Reset();
+            if (TurningPoint >= 4)
+            {
+                GameCount++;
+                Reset();
+
+            }
+            else
+            {
+                foreach (var agent in _agents)
+                {
+                    if (agent.Status != OperativeStatus.Neutralized)
+                        agent.Status = OperativeStatus.Ready;
+                }
+
+                _log.LogInformation($"Turning Point {TurningPoint}, {SideTurn} have the initiative");
+            }
         }
 
         // Get Next Action
         var action = NextRandomAction();
 
-        // Execute Action
+        if (action != null)
+        {
 
-        // Update Agent States
+            // Execute Action
+
+            // Update Agent States
+            action.Operative.Status = OperativeStatus.Activated;
+        }
+
+        // Next Side
+        SideTurn = GetOppositeSide(SideTurn);
     }
 
     public Side InitiativeRoll()
     {
         var values = Enum.GetValues(typeof(Side));
-        return (Side)values.GetValue(Random.Shared.Next(values.Length))!;
+        var side = (Side)values.GetValue(Random.Shared.Next(values.Length))!;
+
+        _log.LogInformation($"{side} have the initiative");
+
+        return side;
     }
 
     public AIAction? NextRandomAction()
@@ -132,9 +172,63 @@ public class KillZone
             return null;
 
         var agent = readyAgents[0];
+        var agentIndex = _agents.IndexOf(agent);
+
+        _log.LogInformation($"Selected agent: {agent.Type.Name} ({agentIndex})");
+
 
         // randomly select actions
-        return null;
+        var possibleActions = Enum.GetValues<OperativeActionType>();
+        var actions = possibleActions.OrderBy(a => rand.Next()).Take(2).ToArray();
+
+        for (var i = 0; i < actions.Length; i++)
+        {
+            _log.LogInformation($"Action {i}: {actions[i]}");
+        }
+
+        return new AIAction(agent, []);
+    }
+
+    public Side GetOppositeSide(Side side)
+    {
+        return side switch
+        {
+            Side.Attacker => Side.Defender,
+            Side.Defender => Side.Attacker,
+            _ => throw new ArgumentException("Invalid side", nameof(side)),
+        };
+    }
+
+    public OperativeMoveAction? GenerateRandomMoveAction(OperativeState agent)
+    {
+        return new OperativeMoveAction
+        {
+            MoveX = (float)Random.Shared.NextDouble(),
+            MoveY = (float)Random.Shared.NextDouble()
+        };
+    }
+
+    public OperativeSprintAction? GenerateRandomSprintAction(OperativeState agent)
+    {
+        return new OperativeSprintAction
+        {
+            MoveX = (float)Random.Shared.NextDouble(),
+            MoveY = (float)Random.Shared.NextDouble()
+        };
+    }
+
+    public OperativeShootAction? GenerateRandomShootAction(OperativeState agent)
+    {
+        var enemies = GetOppositeSide(SideTurn);
+
+        var enemyAgents = _agents.Where(a => a.Side == enemies && a.Status != OperativeStatus.Neutralized).OrderBy(a => Random.Shared.Next()).ToArray();
+        if (enemyAgents.Length == 0)
+            return null;
+
+        return new OperativeShootAction
+        {
+            TargetIndex = _agents.IndexOf(enemyAgents[0])
+        };
     }
 
 }
