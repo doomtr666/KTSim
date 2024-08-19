@@ -13,7 +13,7 @@ public class AIGrid
     public AIGrid(KillZone killZone)
     {
         // collision grid
-        foreach (var agent in killZone.Agents)
+        foreach (var agent in killZone.Operatives)
         {
             SplatCircle(agent.Position.X, agent.Position.Y, agent.Type.BaseDiameter / 2);
         }

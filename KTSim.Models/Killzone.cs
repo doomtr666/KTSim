@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Security.Cryptography;
+using Microsoft.Extensions.Logging;
 
 namespace KTSim.Models;
 
@@ -27,13 +28,12 @@ public class KillZone
     public DropZone[] DropZones { get { return _dropZones.ToArray(); } }
     public Objective[] Objectives { get { return _objectives.ToArray(); } }
     public ITerrain[] Terrains { get { return _terrains.ToArray(); } }
-    public OperativeState[] Agents { get { return _agents.ToArray(); } }
+    public OperativeState[] Operatives { get { return _operatives.ToArray(); } }
 
     private List<DropZone> _dropZones = [];
     private List<Objective> _objectives = [];
     private List<ITerrain> _terrains = [];
-    private List<OperativeState> _agents = [];
-    private List<OperativeStatus> _agentStates = [];
+    private List<OperativeState> _operatives = [];
 
     public uint TurningPoint { get; set; }
 
@@ -86,13 +86,13 @@ public class KillZone
         _terrains.Add(new Terrain(TerrainType.Light | TerrainType.Traversable, new Position(CenterX - 5 * GridStep, CenterY - 5f * GridStep), 0, 4 * GridStep, TriangleDistance));
         _terrains.Add(new Terrain(TerrainType.Light | TerrainType.Traversable, new Position(CenterX + 5 * GridStep, CenterY + 5f * GridStep), 0, 4 * GridStep, TriangleDistance));
 
-        _agents.Clear();
+        _operatives.Clear();
         // add attackers
         var attacker = new KommandoBoyOperative();
         for (var i = 0; i < 10; i++)
         {
             var agentState = new OperativeState(attacker, Side.Attacker, OperativeStatus.Ready, new Position(30 + 40 * i, 30));
-            _agents.Add(agentState);
+            _operatives.Add(agentState);
         }
 
         // add defenders
@@ -100,7 +100,7 @@ public class KillZone
         for (var i = 0; i < 10; i++)
         {
             var agentState = new OperativeState(defender, Side.Defender, OperativeStatus.Ready, new Position(TotalWidth - 30 - 40 * i, TotalHeight - 30));
-            _agents.Add(agentState);
+            _operatives.Add(agentState);
         }
 
         TurningPoint = 0;
@@ -112,7 +112,7 @@ public class KillZone
     public void NextStep()
     {
         // turning point check
-        var readyAgents = _agents.Where(a => a.Status == OperativeStatus.Ready).ToArray();
+        var readyAgents = _operatives.Where(a => a.Status == OperativeStatus.Ready).ToArray();
         if (readyAgents.Length == 0)
         {
             TurningPoint++;
@@ -126,7 +126,7 @@ public class KillZone
             }
             else
             {
-                foreach (var agent in _agents)
+                foreach (var agent in _operatives)
                 {
                     if (agent.Status != OperativeStatus.Neutralized)
                         agent.Status = OperativeStatus.Ready;
@@ -167,7 +167,7 @@ public class KillZone
         var rand = Random.Shared;
 
         // randomly select a ready agent
-        var readyAgents = _agents.Where(a => a.Status == OperativeStatus.Ready && a.Side == SideTurn).OrderBy(a => rand.Next()).ToArray();
+        var readyAgents = _operatives.Where(a => a.Status == OperativeStatus.Ready && a.Side == SideTurn).OrderBy(a => rand.Next()).ToArray();
         if (readyAgents.Length == 0)
         {
             _log.LogInformation("No agent to activate");
@@ -175,10 +175,10 @@ public class KillZone
         }
 
         var agent = readyAgents[0];
-        var agentIndex = _agents.IndexOf(agent);
+        var agentIndex = _operatives.IndexOf(agent);
 
         // randomly select actions
-        var possibleActions = Enum.GetValues<OperativeActionType>().OrderBy(a => rand.Next()).Take(2).ToArray();
+        var possibleActions = Enum.GetValues<OperativeActionType>().OrderBy(a => rand.Next()).Take(agent.Type.ActionPointLimit).ToArray();
 
         var actions = new List<IOperativeAction>();
 
@@ -274,7 +274,23 @@ public class KillZone
         if (dist > maxDist)
             return false;
 
-        // TODO: handle collisions
+        // no collision with terrains
+        var agentCircle = new Circle(agent.Position, agent.Type.BaseDiameter / 2);
+        foreach (var terrain in Terrains)
+        {
+            if (Utils.Intersects(agentCircle, new Rectangle(terrain.Position, terrain.Width, terrain.Height)))
+                return false;
+        }
+
+        // no collision with other agents
+        foreach (var other in _operatives)
+        {
+            if (other == agent)
+                continue;
+
+            if (Utils.Intersects(agentCircle, new Circle(other.Position, other.Type.BaseDiameter / 2)))
+                return false;
+        }
 
         return true;
     }
@@ -283,12 +299,12 @@ public class KillZone
     {
         var enemySide = GetOppositeSide(SideTurn);
 
-        var enemies = _agents.Where(a => a.Side == enemySide && a.Status != OperativeStatus.Neutralized).OrderBy(a => Random.Shared.Next()).ToArray();
+        var enemies = _operatives.Where(a => a.Side == enemySide && a.Status != OperativeStatus.Neutralized).OrderBy(a => Random.Shared.Next()).ToArray();
 
         foreach (var enemy in enemies)
         {
             if (IsTargetValid(agent, enemy))
-                return new OperativeShootAction { TargetIndex = _agents.IndexOf(enemy) };
+                return new OperativeShootAction { TargetIndex = _operatives.IndexOf(enemy) };
         }
 
         return null!;

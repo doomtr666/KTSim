@@ -77,7 +77,7 @@ public partial class MainWindowViewModel : ViewModelBase
             Items.Add(CreateCircle((int)objective.Position.X, (int)objective.Position.Y, Objective.Radius, "Black", "Orange"));
 
         // agents
-        foreach (var agent in _killZone.Agents)
+        foreach (var agent in _killZone.Operatives)
             Items.Add(CreateCircle((int)agent.Position.X, (int)agent.Position.Y, agent.Type.BaseDiameter / 2, "Black", agent.Side == Side.Attacker ? "Red" : "Blue"));
 
 #if false
