@@ -2,9 +2,15 @@ using Microsoft.Extensions.Logging;
 
 namespace KTSim.Models;
 
-public class SimulationState
+public enum Side
 {
-    ILogger<SimulationState> _log;
+    Attacker,
+    Defender,
+}
+
+public class Simulator
+{
+    ILogger<Simulator> _log;
 
     public KillZone _killZone = new KillZone();
     private List<OperativeState> _operatives = [];
@@ -19,7 +25,7 @@ public class SimulationState
 
     public OperativeState[] Operatives => _operatives.ToArray();
 
-    public SimulationState()
+    public Simulator()
     {
         // logger
         using var factory = LoggerFactory.Create(builder => builder
@@ -31,7 +37,7 @@ public class SimulationState
                 options.TimestampFormat = "HH:mm:ss.fff ";
             }));
 
-        _log = factory.CreateLogger<SimulationState>();
+        _log = factory.CreateLogger<Simulator>();
 
         Reset();
     }
@@ -89,36 +95,33 @@ public class SimulationState
         }
 
         // Get Next Action
-        var action = NextRandomAction();
+        var actions = NextRandomAction();
 
-        if (action != null)
+        // Execute Action
+        foreach (var action in actions)
         {
-            // Execute Action
-            foreach (var operativeAction in action.Actions)
+            switch (action)
             {
-                switch (operativeAction)
-                {
-                    case OperativeMoveAction moveAction:
-                        action.Operative.Position = moveAction.Destination;
-                        break;
+                case OperativeMoveAction moveAction:
+                    action.Operative.Position = moveAction.Destination;
+                    break;
 
-                    case OperativeDashAction dashAction:
-                        action.Operative.Position = dashAction.Destination;
-                        break;
+                case OperativeDashAction dashAction:
+                    action.Operative.Position = dashAction.Destination;
+                    break;
 
-                    case OperativeShootAction shootAction:
-                        var target = _operatives[shootAction.TargetIndex];
-                        target.Status = OperativeStatus.Neutralized;
-                        break;
+                case OperativeShootAction shootAction:
+                    var target = _operatives[shootAction.TargetIndex];
+                    target.Status = OperativeStatus.Neutralized;
+                    break;
 
-                    default:
-                        throw new InvalidOperationException();
-                }
+                default:
+                    throw new InvalidOperationException();
             }
-
-            // Update Operative States
-            action.Operative.Status = OperativeStatus.Activated;
         }
+
+        // Update Operative States
+        actions[0].Operative.Status = OperativeStatus.Activated;
 
         // Next Side
         SideTurn = GetOppositeSide(SideTurn);
@@ -134,7 +137,7 @@ public class SimulationState
         return side;
     }
 
-    public OperativeTurn? NextRandomAction()
+    public List<IOperativeAction> NextRandomAction()
     {
         var rand = Random.Shared;
 
@@ -143,7 +146,7 @@ public class SimulationState
         if (readyOperatives.Length == 0)
         {
             _log.LogInformation("No operative to activate");
-            return null;
+            return [];
         }
 
         var operative = readyOperatives[0];
@@ -182,13 +185,11 @@ public class SimulationState
                 actions.Add(selectedAction);
         }
 
-        var choosenAction = new OperativeTurn(operative, actions);
-
         _log.LogInformation($"Selected operative: {operative.Type.Name} ({operativeIndex})");
         foreach (var action in actions)
             _log.LogInformation($"Choosen Action: {action}");
 
-        return choosenAction;
+        return actions;
     }
 
     Side GetOppositeSide(Side side)
@@ -267,20 +268,14 @@ public class SimulationState
     {
         GenerateRandomMovePosition(operative, operative.Type.Movement, ref position);
 
-        return new OperativeMoveAction
-        {
-            Destination = position
-        };
+        return new OperativeMoveAction(operative, position);
     }
 
     OperativeDashAction GenerateRandomDashAction(OperativeState operative, ref Position position)
     {
         GenerateRandomMovePosition(operative, KillZone.SquareDistance, ref position);
 
-        return new OperativeDashAction
-        {
-            Destination = position
-        };
+        return new OperativeDashAction(operative, position);
     }
 
     OperativeShootAction GenerateRandomShootAction(OperativeState operative, ref Position position)
@@ -292,7 +287,7 @@ public class SimulationState
         foreach (var enemy in enemies)
         {
             if (IsTargetValid(position, enemy.Position))
-                return new OperativeShootAction { TargetIndex = _operatives.IndexOf(enemy) };
+                return new OperativeShootAction(operative, _operatives.IndexOf(enemy));
         }
 
         _log.LogWarning("No valid target found");
@@ -314,7 +309,6 @@ public class SimulationState
         }
 
         // TODO: no collision with other operatives
-
         return true;
     }
 

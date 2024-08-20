@@ -11,7 +11,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     ObservableCollection<IShape> _items = [];
 
-    private SimulationState _simulation = new SimulationState();
+    private Simulator _simulation = new Simulator();
 
     private DispatcherTimer _timer;
 

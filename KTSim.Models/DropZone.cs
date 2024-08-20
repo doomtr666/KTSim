@@ -1,10 +1,6 @@
 namespace KTSim.Models;
 
-public enum Side
-{
-    Attacker,
-    Defender,
-}
+
 
 public class DropZone
 {

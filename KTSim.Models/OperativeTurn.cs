@@ -9,14 +9,20 @@ public enum OperativeActionType
 
 public interface IOperativeAction
 {
-    OperativeActionType Type { get; }
+    OperativeState Operative { get; }
 }
 
 public class OperativeMoveAction : IOperativeAction
 {
-    public OperativeActionType Type => OperativeActionType.Move;
+    public OperativeState Operative { get; }
 
-    public Position Destination { get; set; }
+    public Position Destination { get; }
+
+    public OperativeMoveAction(OperativeState operative, Position destination)
+    {
+        Operative = operative;
+        Destination = destination;
+    }
 
     public override string ToString()
     {
@@ -26,8 +32,14 @@ public class OperativeMoveAction : IOperativeAction
 
 public class OperativeDashAction : IOperativeAction
 {
-    public OperativeActionType Type => OperativeActionType.Dash;
+    public OperativeState Operative { get; }
     public Position Destination { get; set; }
+
+    public OperativeDashAction(OperativeState operative, Position destination)
+    {
+        Operative = operative;
+        Destination = destination;
+    }
 
     public override string ToString()
     {
@@ -37,24 +49,17 @@ public class OperativeDashAction : IOperativeAction
 
 public class OperativeShootAction : IOperativeAction
 {
-    public OperativeActionType Type => OperativeActionType.Shoot;
+    public OperativeState Operative { get; }
     public int TargetIndex { get; set; }
+
+    public OperativeShootAction(OperativeState operative, int targetIndex)
+    {
+        Operative = operative;
+        TargetIndex = targetIndex;
+    }
 
     public override string ToString()
     {
         return $"Shoot At ({TargetIndex})";
-    }
-}
-
-public class OperativeTurn
-{
-    public OperativeState Operative { get; set; }
-
-    public List<IOperativeAction> Actions { get; set; }
-
-    public OperativeTurn(OperativeState operative, List<IOperativeAction> actions)
-    {
-        Operative = operative;
-        Actions = actions;
     }
 }
