@@ -29,11 +29,14 @@ public class KillZone
     public Objective[] Objectives { get { return _objectives.ToArray(); } }
     public ITerrain[] Terrains { get { return _terrains.ToArray(); } }
     public OperativeState[] Operatives { get { return _operatives.ToArray(); } }
+    public Segment[] Lines { get { return _lines.ToArray(); } }
 
     private List<DropZone> _dropZones = [];
     private List<Objective> _objectives = [];
     private List<ITerrain> _terrains = [];
     private List<OperativeState> _operatives = [];
+
+    private List<Segment> _lines = [];
 
     public uint TurningPoint { get; set; }
 
@@ -60,6 +63,8 @@ public class KillZone
 
     public void Reset()
     {
+        _lines.Clear();
+
         // add drop zones
         _dropZones.Clear();
         _dropZones.Add(new DropZone(new Position(0, 0), TotalWidth, SquareDistance, Side.Attacker));
@@ -141,8 +146,29 @@ public class KillZone
 
         if (action != null)
         {
-
             // Execute Action
+            foreach (var operativeAction in action.Actions)
+            {
+                switch (operativeAction)
+                {
+                    case OperativeMoveAction moveAction:
+                        action.Operative.Position = moveAction.Destination;
+                        break;
+
+                    case OperativeDashAction dashAction:
+                        action.Operative.Position = dashAction.Destination;
+                        break;
+
+                    case OperativeShootAction shootAction:
+                        var target = _operatives[shootAction.TargetIndex];
+                        target.Status = OperativeStatus.Neutralized;
+                        _lines.Add(new Segment(action.Operative.Position, target.Position));
+                        break;
+
+                    default:
+                        throw new InvalidOperationException();
+                }
+            }
 
             // Update Agent States
             action.Operative.Status = OperativeStatus.Activated;
@@ -167,20 +193,22 @@ public class KillZone
         var rand = Random.Shared;
 
         // randomly select a ready agent
-        var readyAgents = _operatives.Where(a => a.Status == OperativeStatus.Ready && a.Side == SideTurn).OrderBy(a => rand.Next()).ToArray();
-        if (readyAgents.Length == 0)
+        var readyOperatives = _operatives.Where(a => a.Status == OperativeStatus.Ready && a.Side == SideTurn).OrderBy(a => rand.Next()).ToArray();
+        if (readyOperatives.Length == 0)
         {
             _log.LogInformation("No agent to activate");
             return null;
         }
 
-        var agent = readyAgents[0];
-        var agentIndex = _operatives.IndexOf(agent);
+        var operative = readyOperatives[0];
+        var operativeIndex = _operatives.IndexOf(operative);
 
         // randomly select actions
-        var possibleActions = Enum.GetValues<OperativeActionType>().OrderBy(a => rand.Next()).Take(agent.Type.ActionPointLimit).ToArray();
+        var possibleActions = Enum.GetValues<OperativeActionType>().OrderBy(a => rand.Next()).Take(operative.Type.ActionPointLimit).ToArray();
 
         var actions = new List<IOperativeAction>();
+
+        var position = operative.Position;
 
         foreach (var possibleAction in possibleActions)
         {
@@ -189,15 +217,15 @@ public class KillZone
             switch (possibleAction)
             {
                 case OperativeActionType.Move:
-                    selectedAction = GenerateRandomMoveAction(agent);
+                    selectedAction = GenerateRandomMoveAction(operative, ref position);
                     break;
 
                 case OperativeActionType.Dash:
-                    selectedAction = GenerateRandomSprintAction(agent);
+                    selectedAction = GenerateRandomDashAction(operative, ref position);
                     break;
 
                 case OperativeActionType.Shoot:
-                    selectedAction = GenerateRandomShootAction(agent);
+                    selectedAction = GenerateRandomShootAction(operative, ref position);
                     break;
 
                 default:
@@ -208,9 +236,9 @@ public class KillZone
                 actions.Add(selectedAction);
         }
 
-        var choosenAction = new AIAction(agent, actions);
+        var choosenAction = new AIAction(operative, actions);
 
-        _log.LogInformation($"Selected agent: {agent.Type.Name} ({agentIndex})");
+        _log.LogInformation($"Selected agent: {operative.Type.Name} ({operativeIndex})");
         foreach (var action in actions)
             _log.LogInformation($"Choosen Action: {action}");
 
@@ -227,92 +255,120 @@ public class KillZone
         };
     }
 
-    OperativeMoveAction GenerateRandomMoveAction(OperativeState agent)
+    void GenerateRandomMovePosition(OperativeState operative, float maxDist, ref Position position)
     {
+        const int maxTries = 100;
+        int guard = 0;
+
         var destination = new Position();
         do
         {
-            destination.X = agent.Position.X + (2 * (float)Random.Shared.NextDouble() - 1) * agent.Type.Movement;
-            destination.Y = agent.Position.Y + (2 * (float)Random.Shared.NextDouble() - 1) * agent.Type.Movement;
-        } while (!IsMoveValid(agent, destination, agent.Type.Movement));
+            destination.X = position.X + (2 * (float)Random.Shared.NextDouble() - 1) * maxDist;
+            destination.Y = position.Y + (2 * (float)Random.Shared.NextDouble() - 1) * maxDist;
+            guard++;
+        } while (!IsMoveValid(operative, position, destination, maxDist) && guard < maxTries);
 
-        return new OperativeMoveAction
+        if (guard >= maxTries)
         {
-            Destination = destination
-        };
+            destination = operative.Position;
+            _log.LogWarning("No valid move found");
+        }
+
+        position = destination;
     }
 
-    OperativeDashAction GenerateRandomSprintAction(OperativeState agent)
-    {
-        var destination = new Position();
-        do
-        {
-            destination.X = agent.Position.X + (2 * (float)Random.Shared.NextDouble() - 1) * SquareDistance;
-            destination.Y = agent.Position.Y + (2 * (float)Random.Shared.NextDouble() - 1) * SquareDistance;
-        } while (!IsMoveValid(agent, destination, SquareDistance));
-
-        return new OperativeDashAction
-        {
-            Destination = destination
-        };
-    }
-
-    bool IsMoveValid(OperativeState agent, Position destination, float maxDist)
+    bool IsMoveValid(OperativeState operative, Position source, Position destination, float maxDist)
     {
         // must be fully inside the killzone
-        if (destination.X + agent.Type.BaseDiameter / 2 > TotalWidth)
+        if (destination.X + (operative.Type.BaseDiameter / 2) >= TotalWidth)
             return false;
-        if (destination.Y + agent.Type.BaseDiameter / 2 > TotalWidth)
+        if (destination.Y + (operative.Type.BaseDiameter / 2) >= TotalHeight)
             return false;
-        if (destination.X - agent.Type.BaseDiameter / 2 < 0)
+        if (destination.X - (operative.Type.BaseDiameter / 2) < 0)
             return false;
-        if (destination.Y - agent.Type.BaseDiameter / 2 < 0)
+        if (destination.Y - (operative.Type.BaseDiameter / 2) < 0)
             return false;
 
         // no more than maxdist
-        var dist = MathF.Sqrt((destination.X - agent.Position.X) * (destination.X - agent.Position.X) + (destination.Y - agent.Position.Y) * (destination.Y - agent.Position.Y));
-        if (dist > maxDist)
+        if (Utils.Distance(source, destination) > maxDist)
             return false;
 
-        // no collision with terrains
-        var agentCircle = new Circle(agent.Position, agent.Type.BaseDiameter / 2);
-        foreach (var terrain in Terrains)
-        {
-            if (Utils.Intersects(agentCircle, new Rectangle(terrain.Position, terrain.Width, terrain.Height)))
-                return false;
-        }
+        var operativeCircle = new Circle(destination, operative.Type.BaseDiameter / 2);
 
         // no collision with other agents
         foreach (var other in _operatives)
         {
-            if (other == agent)
+            if (other == operative)
+                continue;
+            if (other.Status == OperativeStatus.Neutralized)
                 continue;
 
-            if (Utils.Intersects(agentCircle, new Circle(other.Position, other.Type.BaseDiameter / 2)))
+            if (Utils.Intersects(operativeCircle, new Circle(other.Position, other.Type.BaseDiameter / 2)))
+                return false;
+        }
+
+        // no collision with terrains
+        foreach (var terrain in Terrains)
+        {
+            if (Utils.Intersects(operativeCircle, new Rectangle(terrain.Position, terrain.Width, terrain.Height)))
                 return false;
         }
 
         return true;
     }
 
-    OperativeShootAction GenerateRandomShootAction(OperativeState agent)
+    OperativeMoveAction GenerateRandomMoveAction(OperativeState operative, ref Position position)
     {
-        var enemySide = GetOppositeSide(SideTurn);
+        GenerateRandomMovePosition(operative, operative.Type.Movement, ref position);
+
+        return new OperativeMoveAction
+        {
+            Destination = position
+        };
+    }
+
+    OperativeDashAction GenerateRandomDashAction(OperativeState agent, ref Position position)
+    {
+        GenerateRandomMovePosition(agent, SquareDistance, ref position);
+
+        return new OperativeDashAction
+        {
+            Destination = position
+        };
+    }
+
+    OperativeShootAction GenerateRandomShootAction(OperativeState operative, ref Position position)
+    {
+        var enemySide = GetOppositeSide(operative.Side);
 
         var enemies = _operatives.Where(a => a.Side == enemySide && a.Status != OperativeStatus.Neutralized).OrderBy(a => Random.Shared.Next()).ToArray();
 
         foreach (var enemy in enemies)
         {
-            if (IsTargetValid(agent, enemy))
+            if (IsTargetValid(position, enemy.Position))
                 return new OperativeShootAction { TargetIndex = _operatives.IndexOf(enemy) };
         }
 
+        _log.LogWarning("No valid target found");
         return null!;
     }
 
-    bool IsTargetValid(OperativeState agent, OperativeState target)
+    bool IsTargetValid(Position source, Position target)
     {
-        // TODO: handle line of sight
+        var segment = new Segment(source, target);
+
+        // no collision with terrains
+        foreach (var terrain in Terrains)
+        {
+            //if (!terrain.Type.HasFlag(TerrainType.Heavy))
+            //    continue;
+
+            if (Utils.Intersects(segment, new Rectangle(terrain.Position, terrain.Width, terrain.Height)))
+                return false;
+        }
+
+        // TODO: no collision with other agents
+
         return true;
     }
 

@@ -74,11 +74,31 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // objectives
         foreach (var objective in _killZone.Objectives)
-            Items.Add(CreateCircle((int)objective.Position.X, (int)objective.Position.Y, Objective.Radius, "Black", "Orange"));
+            Items.Add(CreateCircle(objective.Position.X, objective.Position.Y, Objective.Radius, "Black", "Orange"));
 
         // agents
         foreach (var agent in _killZone.Operatives)
-            Items.Add(CreateCircle((int)agent.Position.X, (int)agent.Position.Y, agent.Type.BaseDiameter / 2, "Black", agent.Side == Side.Attacker ? "Red" : "Blue"));
+        {
+            var fillColor = agent.Side == Side.Attacker ? "Red" : "Blue";
+            var strokeColor = "White";
+
+            if (agent.Status == OperativeStatus.Neutralized)
+            {
+                fillColor = "Gray";
+                strokeColor = "Black";
+            }
+
+            if (agent.Status == OperativeStatus.Activated)
+            {
+                strokeColor = "Black";
+            }
+
+            Items.Add(CreateCircle(agent.Position.X, agent.Position.Y, agent.Type.BaseDiameter / 2, strokeColor, fillColor));
+        }
+
+        // lines
+        foreach (var line in _killZone.Lines)
+            Items.Add(new Line(line.Start.X, line.Start.Y, line.End.X, line.End.Y, "Red" ));
 
 #if false
         // debug grid

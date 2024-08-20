@@ -1,15 +1,26 @@
+global using Position = System.Numerics.Vector2;
+
 namespace KTSim.Models;
 
-public struct Position
+public static class Extensions
 {
-    public float X;
-    public float Y;
+    const float epsilon = 0.0001f;
 
-    public Position(float x, float y)
+    public static bool AlmostZero(this float value)
     {
-        X = x;
-        Y = y;
+        return MathF.Abs(value) < epsilon;
     }
+
+    public static bool AlmostEqual(this float value, float other)
+    {
+        return MathF.Abs(value - other) < epsilon;
+    }
+
+    public static float Cross(this Position v1, Position v2)
+    {
+        return v1.X * v2.Y - v1.Y * v2.X;
+    }
+
 }
 
 public struct Rectangle
@@ -30,8 +41,20 @@ public struct Rectangle
         return [
             new Position(Center.X - Width/2, Center.Y - Height/2),
             new Position(Center.X - Width/2, Center.Y + Height/2),
-            new Position(Center.X + Width/2, Center.Y - Height/2),
             new Position(Center.X + Width/2, Center.Y + Height/2),
+            new Position(Center.X + Width/2, Center.Y - Height/2),
+        ];
+    }
+
+    public Segment[] GetSegments()
+    {
+        var corners = GetCorners();
+
+        return [
+            new Segment(corners[0], corners[1]),
+            new Segment(corners[1], corners[2]),
+            new Segment(corners[2], corners[3]),
+            new Segment(corners[3], corners[0]),
         ];
     }
 }
@@ -94,6 +117,31 @@ public static class Utils
 
     public static bool Intersects(Segment segment, Rectangle rectangle)
     {
+        var s = rectangle.GetSegments();
+
+        if (Intersects(segment, s[0]) || Intersects(segment, s[1]) || Intersects(segment, s[2]) || Intersects(segment, s[3]))
+            return true;
+
+        return false;
+    }
+
+    public static bool Intersects(Segment s1, Segment s2)
+    {
+
+        var r = s1.End - s1.Start;
+        var s = s2.End - s2.Start;
+        var rxs = r.Cross(s);
+        var qpxr = (s2.Start - s1.Start).Cross(r);
+
+        if (rxs.AlmostZero())
+            return false;
+
+        var t = (s2.Start - s1.Start).Cross(s) / rxs;
+        var u = (s2.Start - s1.Start).Cross(r) / rxs;
+
+        if (0 <= t && t <= 1 && 0 <= u && u <= 1)
+            return true;
+
         return false;
     }
 }
