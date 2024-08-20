@@ -46,13 +46,13 @@ public class OperativeShootAction : IOperativeAction
     }
 }
 
-public class AIAction
+public class OperativeTurn
 {
     public OperativeState Operative { get; set; }
 
     public List<IOperativeAction> Actions { get; set; }
 
-    public AIAction(OperativeState operative, List<IOperativeAction> actions)
+    public OperativeTurn(OperativeState operative, List<IOperativeAction> actions)
     {
         Operative = operative;
         Actions = actions;

@@ -45,14 +45,10 @@
                         <Rectangle Stroke="{Binding StrokeColor}" StrokeThickness="0.5" Fill="{Binding FillColor}"
                             Width="{Binding Width}" Height="{Binding Height}"></Rectangle>
                     </DataTemplate>
-
-                    <DataTemplate x:DataType="vm:Line">
-                        <Path Stroke="{Binding StrokeColor}" StrokeThickness="0.5" Data="{Binding Data}"></Path>
-                    </DataTemplate>
                 </ItemsControl.DataTemplates>
 
             </ItemsControl>
-        
+
         </paz:ZoomBorder>
     </ScrollViewer>
 

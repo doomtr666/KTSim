@@ -11,7 +11,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     ObservableCollection<IShape> _items = [];
 
-    private KillZone _killZone = new KillZone();
+    private SimulationState _simulation = new SimulationState();
 
     private DispatcherTimer _timer;
 
@@ -25,7 +25,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     void NextStep()
     {
-        _killZone.NextStep();
+        _simulation.NextStep();
 
         Render();
     }
@@ -50,14 +50,14 @@ public partial class MainWindowViewModel : ViewModelBase
         Items.Clear();
 
         // drop zones
-        foreach (var dropZone in _killZone.DropZones)
+        foreach (var dropZone in _simulation.KillZone.DropZones)
         {
             var color = dropZone.Side == Side.Attacker ? "Pink" : "LightBlue";
             Items.Add(CreateRectangle(dropZone.Position.X, dropZone.Position.Y, dropZone.Width, dropZone.Height, color, color));
         }
 
         // terrains
-        foreach (var terrain in _killZone.Terrains)
+        foreach (var terrain in _simulation.KillZone.Terrains)
         {
             var StrokeColor = "Black";
             if (terrain.Type.HasFlag(TerrainType.Traversable))
@@ -73,46 +73,27 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         // objectives
-        foreach (var objective in _killZone.Objectives)
+        foreach (var objective in _simulation.KillZone.Objectives)
             Items.Add(CreateCircle(objective.Position.X, objective.Position.Y, Objective.Radius, "Black", "Orange"));
 
-        // agents
-        foreach (var agent in _killZone.Operatives)
+        // operatives
+        foreach (var operative in _simulation.Operatives)
         {
-            var fillColor = agent.Side == Side.Attacker ? "Red" : "Blue";
+            var fillColor = operative.Side == Side.Attacker ? "Red" : "Blue";
             var strokeColor = "White";
 
-            if (agent.Status == OperativeStatus.Neutralized)
+            if (operative.Status == OperativeStatus.Neutralized)
             {
                 fillColor = "Gray";
                 strokeColor = "Black";
             }
 
-            if (agent.Status == OperativeStatus.Activated)
+            if (operative.Status == OperativeStatus.Activated)
             {
                 strokeColor = "Black";
             }
 
-            Items.Add(CreateCircle(agent.Position.X, agent.Position.Y, agent.Type.BaseDiameter / 2, strokeColor, fillColor));
+            Items.Add(CreateCircle(operative.Position.X, operative.Position.Y, operative.Type.BaseDiameter / 2, strokeColor, fillColor));
         }
-
-        // lines
-        foreach (var line in _killZone.Lines)
-            Items.Add(new Line(line.Start.X, line.Start.Y, line.End.X, line.End.Y, "Red" ));
-
-#if false
-        // debug grid
-        var aiGrid = new AIGrid(_killZone);
-
-        for (var x = 0; x < AIGrid.GridWidth; x++)
-        {
-            for (var y = 0; y < AIGrid.GridHeight; y++)
-            {
-                if (aiGrid.CollisionGrid[x, y])
-                    Items.Add(CreateRectangle(x * AIGrid.GridStep, y * AIGrid.GridStep, AIGrid.GridStep, AIGrid.GridStep, "Black", "Transparent"));
-            }
-        }
-#endif
-
     }
 }

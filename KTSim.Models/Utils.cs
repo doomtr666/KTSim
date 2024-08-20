@@ -2,27 +2,6 @@ global using Position = System.Numerics.Vector2;
 
 namespace KTSim.Models;
 
-public static class Extensions
-{
-    const float epsilon = 0.0001f;
-
-    public static bool AlmostZero(this float value)
-    {
-        return MathF.Abs(value) < epsilon;
-    }
-
-    public static bool AlmostEqual(this float value, float other)
-    {
-        return MathF.Abs(value - other) < epsilon;
-    }
-
-    public static float Cross(this Position v1, Position v2)
-    {
-        return v1.X * v2.Y - v1.Y * v2.X;
-    }
-
-}
-
 public struct Rectangle
 {
     public Position Center;
@@ -131,7 +110,7 @@ public static class Utils
         var r = s1.End - s1.Start;
         var s = s2.End - s2.Start;
         var rxs = r.Cross(s);
-        var qpxr = (s2.Start - s1.Start).Cross(r);
+        //var qpxr = (s2.Start - s1.Start).Cross(r);
 
         if (rxs.AlmostZero())
             return false;
@@ -143,5 +122,23 @@ public static class Utils
             return true;
 
         return false;
+    }
+
+
+    const float epsilon = 0.0001f;
+
+    public static bool AlmostZero(this float value)
+    {
+        return AlmostEqual(value, 0);
+    }
+
+    public static bool AlmostEqual(this float value, float other)
+    {
+        return MathF.Abs(value - other) < epsilon;
+    }
+
+    public static float Cross(this Position v1, Position v2)
+    {
+        return v1.X * v2.Y - v1.Y * v2.X;
     }
 }

@@ -1,5 +1,3 @@
-using TorchSharp.Modules;
-
 namespace KTSim.Models;
 
 public enum OperativeStatus

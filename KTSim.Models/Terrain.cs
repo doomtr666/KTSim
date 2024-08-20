@@ -21,22 +21,6 @@ public interface ITerrain
     public float Height { get; }
 }
 
-public class Barricade : ITerrain
-{
-    public TerrainType Type => TerrainType.Barricade;
-
-    public Position Position { get; }
-    public float Rotation { get; }
-    public float Width => KillZone.CircleDistance;
-    public float Height => 5f;
-
-    public Barricade(Position position, float rotation)
-    {
-        Position = position;
-        Rotation = rotation;
-    }
-}
-
 public class Terrain : ITerrain
 {
     public TerrainType Type { get; }
