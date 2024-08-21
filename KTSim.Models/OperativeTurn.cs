@@ -50,16 +50,16 @@ public class OperativeDashAction : IOperativeAction
 public class OperativeShootAction : IOperativeAction
 {
     public OperativeState Operative { get; }
-    public int TargetIndex { get; set; }
+    public OperativeState Target { get; set; }
 
-    public OperativeShootAction(OperativeState operative, int targetIndex)
+    public OperativeShootAction(OperativeState operative, OperativeState target)
     {
         Operative = operative;
-        TargetIndex = targetIndex;
+        Target = target;
     }
 
     public override string ToString()
     {
-        return $"Shoot At ({TargetIndex})";
+        return $"Shoot At ({Target.Type.Name})";
     }
 }

@@ -18,13 +18,14 @@ public partial class Line : ViewModelBase, IShape
 
     public Line(float x1, float y1, float x2, float y2, string strokeColor = "Black")
     {
-        _x1 = Math.Min(x1, x2);
-        _y1 = Math.Min(y1, y2);
-        _x2 = Math.Max(x1, x2);
-        _y2 = Math.Max(y1, y2);
+        _x1 = x1;
+        _y1 = y1;
+        _x2 = x2;
+        _y2 = y2;
+
+        Data = FormattableString.Invariant($"M0,0L{_x2 - _x1},{_y2 - _y1}");
 
         StrokeColor = strokeColor;
 
-        Data = FormattableString.Invariant($"M0,0L{_x2 - _x1},{_y2 - y1}");
     }
 }

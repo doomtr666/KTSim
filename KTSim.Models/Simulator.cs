@@ -71,7 +71,7 @@ public class Simulator
     {
         while (true)
         {
-            // turning point check
+            // end of turning point / game check
             var readyOperatives = _operatives.Where(a => a.Status == OperativeStatus.Ready).ToArray();
             if (readyOperatives.Length == 0)
             {
@@ -80,6 +80,8 @@ public class Simulator
 
                 if (TurningPoint >= 4)
                 {
+                    _log.LogInformation($"Match {GameCount} ended");
+
                     GameCount++;
                     Reset();
 
@@ -115,8 +117,7 @@ public class Simulator
                         break;
 
                     case OperativeShootAction shootAction:
-                        var target = _operatives[shootAction.TargetIndex];
-                        target.Status = OperativeStatus.Neutralized;
+                        shootAction.Target.Status = OperativeStatus.Neutralized;
                         break;
 
                     default:
@@ -293,7 +294,7 @@ public class Simulator
         foreach (var enemy in enemies)
         {
             if (IsTargetValid(position, enemy.Position))
-                return new OperativeShootAction(operative, _operatives.IndexOf(enemy));
+                return new OperativeShootAction(operative, enemy);
         }
 
         _log.LogWarning("No valid target found");

@@ -19,7 +19,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
-        _timer = new DispatcherTimer(TimeSpan.FromMilliseconds(500), DispatcherPriority.Normal, (s, e) => NextStep());
+        _timer = new DispatcherTimer(TimeSpan.FromMilliseconds(1000), DispatcherPriority.Normal, (s, e) => NextStep());
         _timer.Start();
 
         _actions = _simulator.NextStep().GetEnumerator();
@@ -31,19 +31,20 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         Render();
 
-        //_items.Clear();
-
         _actions.MoveNext();
         var action = _actions.Current;
-
-        if (action is OperativeMoveAction moveAction)
+        switch (action)
         {
-            Items.Add(new Line(moveAction.Operative.Position.X, moveAction.Operative.Position.Y, moveAction.Destination.X, moveAction.Destination.Y, "Blue"));
-        }
+            case OperativeMoveAction moveAction:
+                Items.Add(new Line(moveAction.Operative.Position.X, moveAction.Operative.Position.Y, moveAction.Destination.X, moveAction.Destination.Y, "Blue"));
+                break;
+            case OperativeDashAction dashAction:
+                Items.Add(new Line(dashAction.Operative.Position.X, dashAction.Operative.Position.Y, dashAction.Destination.X, dashAction.Destination.Y, "Green"));
+                break;
 
-        if (action is OperativeDashAction dashAction)
-        {
-            Items.Add(new Line(dashAction.Operative.Position.X, dashAction.Operative.Position.Y, dashAction.Destination.X, dashAction.Destination.Y, "Green"));
+            case OperativeShootAction shootAction:
+                Items.Add(new Line(shootAction.Operative.Position.X, shootAction.Operative.Position.Y, shootAction.Target.Position.X, shootAction.Target.Position.Y, "Red"));
+                break;
         }
 
         //_simulation.NextStep();
