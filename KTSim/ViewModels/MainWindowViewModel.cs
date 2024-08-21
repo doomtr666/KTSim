@@ -4,43 +4,8 @@ using Avalonia.Threading;
 using KTSim.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.Generic;
-using System.Drawing;
 
 namespace KTSim.Gui.ViewModels;
-
-public partial class Arrow : ViewModelBase, IShape
-{
-    [ObservableProperty]
-    float _x;
-
-    [ObservableProperty]
-    float _y;
-
-    [ObservableProperty]
-    Point _start;
-
-    [ObservableProperty]
-    Point _end;
-
-    [ObservableProperty]
-    string _strokeColor = "";
-
-    public Arrow(float x1, float y1, float x2, float y2, string strokeColor = "Black")
-    {
-        float minX = Math.Min(x1, x2);
-        float minY = Math.Min(y1, y2);
-        float maxX = Math.Max(x1, x2);
-        float maxY = Math.Max(y1, y2);
-
-        _x = minX;
-        _y = minY;
-
-        _start = new Point((int)(x1 - minX), (int)(y1 - minY));
-        _end = new Point((int)(x2 - minX), (int)(y2 - minY));
-
-        _strokeColor = strokeColor;
-    }
-}
 
 public partial class MainWindowViewModel : ViewModelBase
 {
@@ -73,12 +38,12 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (action is OperativeMoveAction moveAction)
         {
-            Items.Add(new Arrow(moveAction.Operative.Position.X, moveAction.Operative.Position.Y, moveAction.Destination.X, moveAction.Destination.Y, "Blue"));
+            Items.Add(new Line(moveAction.Operative.Position.X, moveAction.Operative.Position.Y, moveAction.Destination.X, moveAction.Destination.Y, "Blue"));
         }
 
         if (action is OperativeDashAction dashAction)
         {
-            Items.Add(new Arrow(dashAction.Operative.Position.X, dashAction.Operative.Position.Y, dashAction.Destination.X, dashAction.Destination.Y, "Green"));
+            Items.Add(new Line(dashAction.Operative.Position.X, dashAction.Operative.Position.Y, dashAction.Destination.X, dashAction.Destination.Y, "Green"));
         }
 
         //_simulation.NextStep();

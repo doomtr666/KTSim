@@ -6,7 +6,6 @@
     mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
     x:Class="KTSim.Gui.Views.MainWindow"
     xmlns:paz="using:Avalonia.Controls.PanAndZoom"
-    xmlns:arrow="using:Arrow.Avalonia.Controls"
     x:DataType="vm:MainWindowViewModel"
     Icon="/Assets/avalonia-logo.ico"
     Title="Kill Team Simulator">
@@ -46,13 +45,8 @@
                         <Rectangle Stroke="{Binding StrokeColor}" StrokeThickness="0.5" Fill="{Binding FillColor}"
                             Width="{Binding Width}" Height="{Binding Height}"></Rectangle>
                     </DataTemplate>
-                    <DataTemplate x:DataType="vm:Arrow">
-                        <arrow:Arrow StartPoint="{Binding Start}" EndPoint="{Binding End}" Color="{Binding StrokeColor}"                      
-                            HeadLength="2"
-                            HeadWidth="2"
-                            IsFilled="True"
-                            IsProportional="True"
-                            IsVisible="True"/>
+                    <DataTemplate x:DataType="vm:Line">
+                        <Path Stroke="{Binding StrokeColor}" StrokeThickness="0.5" Data="{Binding Data}"></Path>
                     </DataTemplate>
                 </ItemsControl.DataTemplates>
 
