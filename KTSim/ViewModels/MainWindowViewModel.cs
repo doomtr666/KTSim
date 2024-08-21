@@ -17,6 +17,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private DispatcherTimer _timer;
 
+    public Simulator Simulator => _simulator;
+
     public MainWindowViewModel()
     {
         _timer = new DispatcherTimer(TimeSpan.FromMilliseconds(1000), DispatcherPriority.Normal, (s, e) => NextStep());
