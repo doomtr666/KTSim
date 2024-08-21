@@ -67,64 +67,70 @@ public class Simulator
         _log.LogInformation($"Match {GameCount} started, {SideTurn} have the initiative");
     }
 
-    public void NextStep()
+    public IEnumerable<IOperativeAction> NextStep()
     {
-        // turning point check
-        var readyOperatives = _operatives.Where(a => a.Status == OperativeStatus.Ready).ToArray();
-        if (readyOperatives.Length == 0)
+        while (true)
         {
-            TurningPoint++;
-            SideTurn = InitiativeRoll();
-
-            if (TurningPoint >= 4)
+            // turning point check
+            var readyOperatives = _operatives.Where(a => a.Status == OperativeStatus.Ready).ToArray();
+            if (readyOperatives.Length == 0)
             {
-                GameCount++;
-                Reset();
+                TurningPoint++;
+                SideTurn = InitiativeRoll();
 
-            }
-            else
-            {
-                foreach (var operative in _operatives)
+                if (TurningPoint >= 4)
                 {
-                    if (operative.Status != OperativeStatus.Neutralized)
-                        operative.Status = OperativeStatus.Ready;
+                    GameCount++;
+                    Reset();
+
                 }
+                else
+                {
+                    foreach (var operative in _operatives)
+                    {
+                        if (operative.Status != OperativeStatus.Neutralized)
+                            operative.Status = OperativeStatus.Ready;
+                    }
 
-                _log.LogInformation($"Turning Point {TurningPoint}, {SideTurn} have the initiative");
+                    _log.LogInformation($"Turning Point {TurningPoint}, {SideTurn} have the initiative");
+                }
             }
-        }
 
-        // Get Next Action
-        var actions = NextRandomAction();
+            // Get Next Action
+            var actions = NextRandomAction();
 
-        // Execute Action
-        foreach (var action in actions)
-        {
-            switch (action)
+            // Execute Action
+            foreach (var action in actions)
             {
-                case OperativeMoveAction moveAction:
-                    action.Operative.Position = moveAction.Destination;
-                    break;
+                yield return action;
 
-                case OperativeDashAction dashAction:
-                    action.Operative.Position = dashAction.Destination;
-                    break;
+                switch (action)
+                {
+                    case OperativeMoveAction moveAction:
+                        action.Operative.Position = moveAction.Destination;
+                        break;
 
-                case OperativeShootAction shootAction:
-                    var target = _operatives[shootAction.TargetIndex];
-                    target.Status = OperativeStatus.Neutralized;
-                    break;
+                    case OperativeDashAction dashAction:
+                        action.Operative.Position = dashAction.Destination;
+                        break;
 
-                default:
-                    throw new InvalidOperationException();
+                    case OperativeShootAction shootAction:
+                        var target = _operatives[shootAction.TargetIndex];
+                        target.Status = OperativeStatus.Neutralized;
+                        break;
+
+                    default:
+                        throw new InvalidOperationException();
+                }
             }
+
+            // Update Operative States
+            if (actions.Count > 0)
+                actions[0].Operative.Status = OperativeStatus.Activated;
+
+            // Next Side
+            SideTurn = GetOppositeSide(SideTurn);
         }
-
-        // Update Operative States
-        actions[0].Operative.Status = OperativeStatus.Activated;
-
-        // Next Side
-        SideTurn = GetOppositeSide(SideTurn);
     }
 
     public Side InitiativeRoll()

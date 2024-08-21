@@ -3,15 +3,52 @@ using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using KTSim.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
+using System.Collections.Generic;
+using System.Drawing;
 
 namespace KTSim.Gui.ViewModels;
+
+public partial class Arrow : ViewModelBase, IShape
+{
+    [ObservableProperty]
+    float _x;
+
+    [ObservableProperty]
+    float _y;
+
+    [ObservableProperty]
+    Point _start;
+
+    [ObservableProperty]
+    Point _end;
+
+    [ObservableProperty]
+    string _strokeColor = "";
+
+    public Arrow(float x1, float y1, float x2, float y2, string strokeColor = "Black")
+    {
+        float minX = Math.Min(x1, x2);
+        float minY = Math.Min(y1, y2);
+        float maxX = Math.Max(x1, x2);
+        float maxY = Math.Max(y1, y2);
+
+        _x = minX;
+        _y = minY;
+
+        _start = new Point((int)(x1 - minX), (int)(y1 - minY));
+        _end = new Point((int)(x2 - minX), (int)(y2 - minY));
+
+        _strokeColor = strokeColor;
+    }
+}
 
 public partial class MainWindowViewModel : ViewModelBase
 {
     [ObservableProperty]
     ObservableCollection<IShape> _items = [];
 
-    private Simulator _simulation = new Simulator();
+    private Simulator _simulator = new Simulator();
+    private IEnumerator<IOperativeAction> _actions;
 
     private DispatcherTimer _timer;
 
@@ -20,14 +57,31 @@ public partial class MainWindowViewModel : ViewModelBase
         _timer = new DispatcherTimer(TimeSpan.FromMilliseconds(500), DispatcherPriority.Normal, (s, e) => NextStep());
         _timer.Start();
 
-        Render();
+        _actions = _simulator.NextStep().GetEnumerator();
+
+        //Render();
     }
 
     void NextStep()
     {
-        _simulation.NextStep();
-
         Render();
+
+        //_items.Clear();
+
+        _actions.MoveNext();
+        var action = _actions.Current;
+
+        if (action is OperativeMoveAction moveAction)
+        {
+            Items.Add(new Arrow(moveAction.Operative.Position.X, moveAction.Operative.Position.Y, moveAction.Destination.X, moveAction.Destination.Y, "Blue"));
+        }
+
+        if (action is OperativeDashAction dashAction)
+        {
+            Items.Add(new Arrow(dashAction.Operative.Position.X, dashAction.Operative.Position.Y, dashAction.Destination.X, dashAction.Destination.Y, "Green"));
+        }
+
+        //_simulation.NextStep();
     }
 
     Circle CreateCircle(float x, float y, float radius, string StrokeColor, string FillColor = "")
@@ -50,14 +104,14 @@ public partial class MainWindowViewModel : ViewModelBase
         Items.Clear();
 
         // drop zones
-        foreach (var dropZone in _simulation.KillZone.DropZones)
+        foreach (var dropZone in _simulator.KillZone.DropZones)
         {
             var color = dropZone.Side == Side.Attacker ? "Pink" : "LightBlue";
             Items.Add(CreateRectangle(dropZone.Position.X, dropZone.Position.Y, dropZone.Width, dropZone.Height, color, color));
         }
 
         // terrains
-        foreach (var terrain in _simulation.KillZone.Terrains)
+        foreach (var terrain in _simulator.KillZone.Terrains)
         {
             var StrokeColor = "Black";
             if (terrain.Type.HasFlag(TerrainType.Traversable))
@@ -73,11 +127,11 @@ public partial class MainWindowViewModel : ViewModelBase
         }
 
         // objectives
-        foreach (var objective in _simulation.KillZone.Objectives)
+        foreach (var objective in _simulator.KillZone.Objectives)
             Items.Add(CreateCircle(objective.Position.X, objective.Position.Y, Objective.Radius, "Black", "Orange"));
 
         // operatives
-        foreach (var operative in _simulation.Operatives)
+        foreach (var operative in _simulator.Operatives)
         {
             var fillColor = operative.Side == Side.Attacker ? "Red" : "Blue";
             var strokeColor = "White";
