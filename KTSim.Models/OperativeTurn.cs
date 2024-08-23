@@ -9,16 +9,16 @@ public enum OperativeActionType
 
 public interface IOperativeAction
 {
-    OperativeState Operative { get; }
+    int Operative { get; }
 }
 
 public class OperativeMoveAction : IOperativeAction
 {
-    public OperativeState Operative { get; }
+    public int Operative { get; }
 
     public Position Destination { get; }
 
-    public OperativeMoveAction(OperativeState operative, Position destination)
+    public OperativeMoveAction(int operative, Position destination)
     {
         Operative = operative;
         Destination = destination;
@@ -26,16 +26,16 @@ public class OperativeMoveAction : IOperativeAction
 
     public override string ToString()
     {
-        return $"Move To ({Destination.X},{Destination.Y})";
+        return $"{Operative} Move To ({Destination.X},{Destination.Y})";
     }
 }
 
 public class OperativeDashAction : IOperativeAction
 {
-    public OperativeState Operative { get; }
+    public int Operative { get; }
     public Position Destination { get; set; }
 
-    public OperativeDashAction(OperativeState operative, Position destination)
+    public OperativeDashAction(int operative, Position destination)
     {
         Operative = operative;
         Destination = destination;
@@ -43,16 +43,16 @@ public class OperativeDashAction : IOperativeAction
 
     public override string ToString()
     {
-        return $"Dash To ({Destination.X}{Destination.Y})";
+        return $"{Operative} Dash To ({Destination.X}{Destination.Y})";
     }
 }
 
 public class OperativeShootAction : IOperativeAction
 {
-    public OperativeState Operative { get; }
-    public OperativeState Target { get; set; }
+    public int Operative { get; }
+    public int Target { get; set; }
 
-    public OperativeShootAction(OperativeState operative, OperativeState target)
+    public OperativeShootAction(int operative, int target)
     {
         Operative = operative;
         Target = target;
@@ -60,6 +60,6 @@ public class OperativeShootAction : IOperativeAction
 
     public override string ToString()
     {
-        return $"Shoot At ({Target.Type.Name})";
+        return $"Shoot At (target)";
     }
 }

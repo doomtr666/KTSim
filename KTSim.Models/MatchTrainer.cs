@@ -2,18 +2,86 @@ using Microsoft.Extensions.Logging;
 
 namespace KTSim.Models;
 
+
 public enum Side
 {
     Attacker,
     Defender,
 }
 
-public class Simulator
+public class MatchRunnerBase
 {
-    ILogger<Simulator> _log;
+    public KillZone KillZone { get; protected set; } = null!;
+    public List<OperativeState> InitialOperativeStates { get; protected set; } = [];
+    public List<OperativeState> CurrentOperativeStates { get; } = [];
 
-    public KillZone _killZone = new KillZone();
-    private List<OperativeState> _operatives = [];
+    public MatchRunnerBase()
+    {
+    }
+
+    public MatchRunnerBase(KillZone killZone, List<OperativeState> initialOperativeStates)
+    {
+        KillZone = killZone;
+        InitialOperativeStates = initialOperativeStates;
+    }
+
+    public virtual void Reset()
+    {
+        CurrentOperativeStates.Clear();
+        if (InitialOperativeStates == null)
+            return;
+        foreach (var operativeState in InitialOperativeStates)
+            CurrentOperativeStates.Add(operativeState.Copy());
+    }
+
+    protected void ApplyAction(IOperativeAction action)
+    {
+        switch (action)
+        {
+            case OperativeMoveAction moveAction:
+                CurrentOperativeStates[moveAction.Operative].Position = moveAction.Destination;
+                break;
+
+            case OperativeDashAction dashAction:
+                CurrentOperativeStates[dashAction.Operative].Position = dashAction.Destination;
+                break;
+
+            case OperativeShootAction shootAction:
+                CurrentOperativeStates[shootAction.Target].Status = OperativeStatus.Neutralized;
+                break;
+
+            default:
+                throw new InvalidOperationException();
+        }
+    }
+
+}
+
+public class MatchPlayer : MatchRunnerBase
+{
+    Match _match;
+
+    public MatchPlayer(Match match)
+        : base(match.KillZone, match.InitialOperativeStates)
+    {
+        _match = match;
+        Reset();
+    }
+
+    public IEnumerable<IOperativeAction> NextStep()
+    {
+        foreach (var action in _match.PlayedActions)
+        {
+            yield return action;
+            ApplyAction(action);
+        }
+    }
+
+}
+
+public class MatchTrainer : MatchRunnerBase
+{
+    ILogger<MatchTrainer> _log;
 
     public uint TurningPoint { get; private set; }
 
@@ -21,11 +89,7 @@ public class Simulator
 
     public int GameCount { get; private set; } = 0;
 
-    public KillZone KillZone => _killZone;
-
-    public OperativeState[] Operatives => _operatives.ToArray();
-
-    public Simulator()
+    public MatchTrainer()
     {
         // logger
         using var factory = LoggerFactory.Create(builder => builder
@@ -37,32 +101,39 @@ public class Simulator
                 options.TimestampFormat = "HH:mm:ss.fff ";
             }));
 
-        _log = factory.CreateLogger<Simulator>();
+        _log = factory.CreateLogger<MatchTrainer>();
+
+        // create KillZone
+        KillZone = new KillZone();
+
+        // create Operatives
+        var operatives = new List<OperativeState>();
+
+        var attacker = new KommandoBoyOperative();
+        for (var i = 0; i < 10; i++)
+        {
+            var operativeState = new OperativeState(operatives.Count, attacker, Side.Attacker, OperativeStatus.Ready, new Position(30 + 40 * i, 30));
+            operatives.Add(operativeState);
+        }
+
+        var defender = new VeteranTrooperOperative();
+        for (var i = 0; i < 10; i++)
+        {
+            var operativeState = new OperativeState(operatives.Count, defender, Side.Defender, OperativeStatus.Ready, new Position(KillZone.TotalWidth - 30 - 40 * i, KillZone.TotalHeight - 30));
+            operatives.Add(operativeState);
+        }
+
+        InitialOperativeStates = operatives;
 
         Reset();
     }
 
-    public void Reset()
+    public override void Reset()
     {
-        _operatives.Clear();
-        // add attackers
-        var attacker = new KommandoBoyOperative();
-        for (var i = 0; i < 10; i++)
-        {
-            var operativeState = new OperativeState(attacker, Side.Attacker, OperativeStatus.Ready, new Position(30 + 40 * i, 30));
-            _operatives.Add(operativeState);
-        }
-
-        // add defenders
-        var defender = new VeteranTrooperOperative();
-        for (var i = 0; i < 10; i++)
-        {
-            var operativeState = new OperativeState(defender, Side.Defender, OperativeStatus.Ready, new Position(KillZone.TotalWidth - 30 - 40 * i, KillZone.TotalHeight - 30));
-            _operatives.Add(operativeState);
-        }
-
         TurningPoint = 0;
         SideTurn = InitiativeRoll();
+
+        base.Reset();
 
         _log.LogInformation($"Match {GameCount} started, {SideTurn} have the initiative");
     }
@@ -72,7 +143,7 @@ public class Simulator
         while (true)
         {
             // end of turning point / game check
-            var readyOperatives = _operatives.Where(a => a.Status == OperativeStatus.Ready).ToArray();
+            var readyOperatives = CurrentOperativeStates.Where(a => a.Status == OperativeStatus.Ready).ToArray();
             if (readyOperatives.Length == 0)
             {
                 TurningPoint++;
@@ -81,14 +152,12 @@ public class Simulator
                 if (TurningPoint >= 4)
                 {
                     _log.LogInformation($"Match {GameCount} ended");
-
                     GameCount++;
                     Reset();
-
                 }
                 else
                 {
-                    foreach (var operative in _operatives)
+                    foreach (var operative in CurrentOperativeStates)
                     {
                         if (operative.Status != OperativeStatus.Neutralized)
                             operative.Status = OperativeStatus.Ready;
@@ -106,28 +175,12 @@ public class Simulator
             {
                 yield return action;
 
-                switch (action)
-                {
-                    case OperativeMoveAction moveAction:
-                        action.Operative.Position = moveAction.Destination;
-                        break;
-
-                    case OperativeDashAction dashAction:
-                        action.Operative.Position = dashAction.Destination;
-                        break;
-
-                    case OperativeShootAction shootAction:
-                        shootAction.Target.Status = OperativeStatus.Neutralized;
-                        break;
-
-                    default:
-                        throw new InvalidOperationException();
-                }
+                ApplyAction(action);
             }
 
             // Update Operative States
             if (actions.Count > 0)
-                actions[0].Operative.Status = OperativeStatus.Activated;
+                CurrentOperativeStates[actions[0].Operative].Status = OperativeStatus.Activated;
 
             // Next Side
             SideTurn = GetOppositeSide(SideTurn);
@@ -149,7 +202,7 @@ public class Simulator
         var rand = Random.Shared;
 
         // randomly select a ready operative
-        var readyOperatives = _operatives.Where(a => a.Status == OperativeStatus.Ready && a.Side == SideTurn).OrderBy(a => rand.Next()).ToArray();
+        var readyOperatives = CurrentOperativeStates.Where(a => a.Status == OperativeStatus.Ready && a.Side == SideTurn).OrderBy(a => rand.Next()).ToArray();
         if (readyOperatives.Length == 0)
         {
             _log.LogInformation("No operative to activate");
@@ -157,7 +210,7 @@ public class Simulator
         }
 
         var operative = readyOperatives[0];
-        var operativeIndex = _operatives.IndexOf(operative);
+        var operativeIndex = operative.Index;
 
         // randomly select actions
         var possibleActions = Enum.GetValues<OperativeActionType>().OrderBy(a => rand.Next()).Take(operative.Type.ActionPointLimit).ToArray();
@@ -250,9 +303,9 @@ public class Simulator
         var operativeCircle = new Circle(destination, operative.Type.BaseDiameter / 2);
 
         // no collision with other operatives
-        foreach (var other in _operatives)
+        foreach (var other in CurrentOperativeStates)
         {
-            if (other == operative)
+            if (other.Index == operative.Index)
                 continue;
             if (other.Status == OperativeStatus.Neutralized)
                 continue;
@@ -275,26 +328,26 @@ public class Simulator
     {
         GenerateRandomMovePosition(operative, operative.Type.Movement, ref position);
 
-        return new OperativeMoveAction(operative, position);
+        return new OperativeMoveAction(operative.Index, position);
     }
 
     OperativeDashAction GenerateRandomDashAction(OperativeState operative, ref Position position)
     {
         GenerateRandomMovePosition(operative, KillZone.SquareDistance, ref position);
 
-        return new OperativeDashAction(operative, position);
+        return new OperativeDashAction(operative.Index, position);
     }
 
     OperativeShootAction GenerateRandomShootAction(OperativeState operative, ref Position position)
     {
         var enemySide = GetOppositeSide(operative.Side);
 
-        var enemies = _operatives.Where(a => a.Side == enemySide && a.Status != OperativeStatus.Neutralized).OrderBy(a => Random.Shared.Next()).ToArray();
+        var enemies = CurrentOperativeStates.Where(a => a.Side == enemySide && a.Status != OperativeStatus.Neutralized).OrderBy(a => Random.Shared.Next()).ToArray();
 
         foreach (var enemy in enemies)
         {
             if (IsTargetValid(position, enemy.Position))
-                return new OperativeShootAction(operative, enemy);
+                return new OperativeShootAction(operative.Index, enemy.Index);
         }
 
         _log.LogWarning("No valid target found");

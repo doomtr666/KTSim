@@ -22,42 +22,7 @@
         <paz:ZoomBorder Name="ZoomBorder" Stretch="None" ZoomSpeed="1.1"
             Background="LightGray" ClipToBounds="True" Focusable="True"
             VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
-            <cs:KillzoneViewControl Width="762" Height="559" Simulator="{Binding Simulator}"/>
-
-            <!--
-
-            <ItemsControl ItemsSource="{Binding Items}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <Canvas Background="White" Width="762" Height="559" />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-
-                <ItemsControl.Styles>
-                    <Style Selector="ContentPresenter" x:DataType="vm:IShape">
-                        <Setter Property="Canvas.Left" Value="{Binding X}" />
-                        <Setter Property="Canvas.Top" Value="{Binding Y}" />
-                    </Style>
-                </ItemsControl.Styles>
-
-                <ItemsControl.DataTemplates>
-                    <DataTemplate x:DataType="vm:Circle">
-                        <Ellipse Stroke="{Binding StrokeColor}" StrokeThickness="2" Fill="{Binding FillColor}"
-                            Width="{Binding Width}" Height="{Binding Width}"></Ellipse>
-                    </DataTemplate>
-                    <DataTemplate x:DataType="vm:Rectangle">
-                        <Rectangle Stroke="{Binding StrokeColor}" StrokeThickness="0.5" Fill="{Binding FillColor}"
-                            Width="{Binding Width}" Height="{Binding Height}"></Rectangle>
-                    </DataTemplate>
-                    <DataTemplate x:DataType="vm:Line">
-                        <Path Stroke="{Binding StrokeColor}" StrokeThickness="0.5" Data="{Binding Data}"></Path>
-                    </DataTemplate>
-                </ItemsControl.DataTemplates>
-
-            </ItemsControl>
-
-            -->
-
+            <cs:KillzoneViewControl Width="762" Height="559" Simulator="{Binding Simulator}" LastAction="{Binding LastAction}"/>
         </paz:ZoomBorder>
     </ScrollViewer>
 

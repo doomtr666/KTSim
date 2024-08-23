@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.002.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KTSim.Gui", "KTSim\KTSim.Gui.csproj", "{866DB87B-2E51-405B-BF1D-3EDDC1859397}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KTSim.Gui", "KTSim\KTSim.Gui.csproj", "{1549310C-384D-4A35-B3EF-245C7CD30023}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KTSim.Models", "KTSim.Models\KTSim.Models.csproj", "{C2824E49-44D0-4CB2-9F82-0218022E8A3F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KTSim.Models", "KTSim.Models\KTSim.Models.csproj", "{F94D5114-DDA8-4BE5-8BF5-3EEFD7A0DA9C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,14 +13,14 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{866DB87B-2E51-405B-BF1D-3EDDC1859397}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{866DB87B-2E51-405B-BF1D-3EDDC1859397}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{866DB87B-2E51-405B-BF1D-3EDDC1859397}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{866DB87B-2E51-405B-BF1D-3EDDC1859397}.Release|Any CPU.Build.0 = Release|Any CPU
-		{C2824E49-44D0-4CB2-9F82-0218022E8A3F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C2824E49-44D0-4CB2-9F82-0218022E8A3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{C2824E49-44D0-4CB2-9F82-0218022E8A3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{C2824E49-44D0-4CB2-9F82-0218022E8A3F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1549310C-384D-4A35-B3EF-245C7CD30023}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1549310C-384D-4A35-B3EF-245C7CD30023}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1549310C-384D-4A35-B3EF-245C7CD30023}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1549310C-384D-4A35-B3EF-245C7CD30023}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F94D5114-DDA8-4BE5-8BF5-3EEFD7A0DA9C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F94D5114-DDA8-4BE5-8BF5-3EEFD7A0DA9C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F94D5114-DDA8-4BE5-8BF5-3EEFD7A0DA9C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F94D5114-DDA8-4BE5-8BF5-3EEFD7A0DA9C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
