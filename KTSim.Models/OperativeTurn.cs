@@ -60,6 +60,6 @@ public class OperativeShootAction : IOperativeAction
 
     public override string ToString()
     {
-        return $"Shoot At (target)";
+        return $"{Operative} Shoot At {Target}";
     }
 }

@@ -11,11 +11,11 @@ public class OperativeState
 {
     public int Index { get; }
     public IOperativeType Type { get; }
-    public Side Side { get; }
+    public TurnSide Side { get; }
     public OperativeStatus Status { get; set; }
     public Position Position { get; set; }
 
-    public OperativeState(int index, IOperativeType type, Side side, OperativeStatus state, Position position)
+    public OperativeState(int index, IOperativeType type, TurnSide side, OperativeStatus state, Position position)
     {
         Index = index;
         Type = type;

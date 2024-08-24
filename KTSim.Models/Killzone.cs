@@ -37,8 +37,8 @@ public class KillZone
     {
         // add drop zones
         _dropZones.Clear();
-        _dropZones.Add(new DropZone(new Position(0, 0), TotalWidth, SquareDistance, Side.Attacker));
-        _dropZones.Add(new DropZone(new Position(0, TotalHeight - SquareDistance), TotalWidth, SquareDistance, Side.Defender));
+        _dropZones.Add(new DropZone(new Position(0, 0), TotalWidth, SquareDistance, TurnSide.Attacker));
+        _dropZones.Add(new DropZone(new Position(0, TotalHeight - SquareDistance), TotalWidth, SquareDistance, TurnSide.Defender));
 
         // add objectives
         _objectives.Clear();

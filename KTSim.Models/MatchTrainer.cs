@@ -1,91 +1,17 @@
 using Microsoft.Extensions.Logging;
+using Tensorboard;
 
 namespace KTSim.Models;
 
-
-public enum Side
+public enum TurnSide
 {
     Attacker,
     Defender,
 }
 
-public class MatchRunnerBase
-{
-    public KillZone KillZone { get; protected set; } = null!;
-    public List<OperativeState> InitialOperativeStates { get; protected set; } = [];
-    public List<OperativeState> CurrentOperativeStates { get; } = [];
-
-    public MatchRunnerBase()
-    {
-    }
-
-    public MatchRunnerBase(KillZone killZone, List<OperativeState> initialOperativeStates)
-    {
-        KillZone = killZone;
-        InitialOperativeStates = initialOperativeStates;
-    }
-
-    public virtual void Reset()
-    {
-        CurrentOperativeStates.Clear();
-        if (InitialOperativeStates == null)
-            return;
-        foreach (var operativeState in InitialOperativeStates)
-            CurrentOperativeStates.Add(operativeState.Copy());
-    }
-
-    protected void ApplyAction(IOperativeAction action)
-    {
-        switch (action)
-        {
-            case OperativeMoveAction moveAction:
-                CurrentOperativeStates[moveAction.Operative].Position = moveAction.Destination;
-                break;
-
-            case OperativeDashAction dashAction:
-                CurrentOperativeStates[dashAction.Operative].Position = dashAction.Destination;
-                break;
-
-            case OperativeShootAction shootAction:
-                CurrentOperativeStates[shootAction.Target].Status = OperativeStatus.Neutralized;
-                break;
-
-            default:
-                throw new InvalidOperationException();
-        }
-    }
-
-}
-
-public class MatchPlayer : MatchRunnerBase
-{
-    Match _match;
-
-    public MatchPlayer(Match match)
-        : base(match.KillZone, match.InitialOperativeStates)
-    {
-        _match = match;
-        Reset();
-    }
-
-    public IEnumerable<IOperativeAction> NextStep()
-    {
-        foreach (var action in _match.PlayedActions)
-        {
-            yield return action;
-            ApplyAction(action);
-        }
-    }
-
-}
-
 public class MatchTrainer : MatchRunnerBase
 {
     ILogger<MatchTrainer> _log;
-
-    public uint TurningPoint { get; private set; }
-
-    public Side SideTurn { get; private set; }
 
     public int GameCount { get; private set; } = 0;
 
@@ -112,14 +38,14 @@ public class MatchTrainer : MatchRunnerBase
         var attacker = new KommandoBoyOperative();
         for (var i = 0; i < 10; i++)
         {
-            var operativeState = new OperativeState(operatives.Count, attacker, Side.Attacker, OperativeStatus.Ready, new Position(30 + 40 * i, 30));
+            var operativeState = new OperativeState(operatives.Count, attacker, TurnSide.Attacker, OperativeStatus.Ready, new Position(30 + 40 * i, 30));
             operatives.Add(operativeState);
         }
 
         var defender = new VeteranTrooperOperative();
         for (var i = 0; i < 10; i++)
         {
-            var operativeState = new OperativeState(operatives.Count, defender, Side.Defender, OperativeStatus.Ready, new Position(KillZone.TotalWidth - 30 - 40 * i, KillZone.TotalHeight - 30));
+            var operativeState = new OperativeState(operatives.Count, defender, TurnSide.Defender, OperativeStatus.Ready, new Position(KillZone.TotalWidth - 30 - 40 * i, KillZone.TotalHeight - 30));
             operatives.Add(operativeState);
         }
 
@@ -128,163 +54,168 @@ public class MatchTrainer : MatchRunnerBase
         Reset();
     }
 
-    public override void Reset()
+    public Match GenerateMatch()
     {
-        TurningPoint = 0;
-        SideTurn = InitiativeRoll();
+        Reset();
 
-        base.Reset();
+        _log.LogInformation($"Match {GameCount} started");
 
-        _log.LogInformation($"Match {GameCount} started, {SideTurn} have the initiative");
-    }
+        var playedActions = new List<IOperativeAction>();
 
-    public IEnumerable<IOperativeAction> NextStep()
-    {
-        while (true)
+        var attackerScore = 0;
+        var defenderScore = 0;
+
+        for (var turningPoint = 1; turningPoint <= 4; turningPoint++)
         {
-            // end of turning point / game check
-            var readyOperatives = CurrentOperativeStates.Where(a => a.Status == OperativeStatus.Ready).ToArray();
-            if (readyOperatives.Length == 0)
-            {
-                TurningPoint++;
-                SideTurn = InitiativeRoll();
+            // determine initiative
+            var sideTurn = InitiativeRoll();
 
-                if (TurningPoint >= 4)
+            // prepare operatives
+            foreach (var operative in CurrentOperativeStates)
+            {
+                if (operative.Status != OperativeStatus.Neutralized)
+                    operative.Status = OperativeStatus.Ready;
+            }
+
+            // turning point starts
+            _log.LogInformation($"Turning Point {turningPoint}, {sideTurn} have the initiative");
+
+            while (CurrentOperativeStates.Where(a => a.Status == OperativeStatus.Ready).Count() > 0)
+            {
+                // select random operative
+                var operative = CurrentOperativeStates.Where(a => a.Status == OperativeStatus.Ready && a.Side == sideTurn).OrderBy(a => Random.Shared.Next()).FirstOrDefault();
+
+                if (operative != null)
                 {
-                    _log.LogInformation($"Match {GameCount} ended");
-                    GameCount++;
-                    Reset();
-                }
-                else
-                {
-                    foreach (var operative in CurrentOperativeStates)
+                    _log.LogInformation($"Selected operative: {operative.Type.Name} ({operative.Index})");
+
+                    bool shoot = false;
+                    bool move = false;
+                    bool dash = false;
+
+                    for (var i = 0; i < operative.Type.ActionPointLimit; i++)
                     {
-                        if (operative.Status != OperativeStatus.Neutralized)
-                            operative.Status = OperativeStatus.Ready;
+                        // by order of priority
+                        if (!shoot)
+                        {
+                            var action = GenerateRandomShootAction(operative);
+
+                            if (action != null)
+                            {
+                                _log.LogInformation($"Choosen Action {i}: {action}");
+                                playedActions.Add(action);
+                                ApplyAction(action);
+                                shoot = true;
+                                continue;
+                            }
+                        }
+
+                        if (!move)
+                        {
+                            var action = GenerateRandomMoveAction(operative);
+
+                            if (action != null)
+                            {
+                                _log.LogInformation($"Choosen Action {i}: {action}");
+                                playedActions.Add(action);
+                                ApplyAction(action);
+                                move = true;
+                                continue;
+                            }
+                        }
+
+                        if (!dash)
+                        {
+                            var action = GenerateRandomDashAction(operative);
+
+                            if (action != null)
+                            {
+                                _log.LogInformation($"Choosen Action {i}: {action}");
+                                playedActions.Add(action);
+                                ApplyAction(action);
+                                dash = true;
+                                continue;
+                            }
+                        }
+
+                        _log.LogWarning($"No valid action found for operative {operative.Index}");
                     }
 
-                    _log.LogInformation($"Turning Point {TurningPoint}, {SideTurn} have the initiative");
+                    operative.Status = OperativeStatus.Activated;
                 }
+
+                // apply action
+                sideTurn = GetOppositeSide(sideTurn);
             }
 
-            // Get Next Action
-            var actions = NextRandomAction();
-
-            // Execute Action
-            foreach (var action in actions)
+            // compute score
+            foreach (var objective in KillZone.Objectives)
             {
-                yield return action;
+                var attackerCount = CurrentOperativeStates.Where(a => a.Side == TurnSide.Attacker && a.Status != OperativeStatus.Neutralized 
+                    && Utils.Distance(a.Position, objective.Position) <= Objective.Radius + a.Type.BaseDiameter / 2).Count();
+                var defenderCount = CurrentOperativeStates.Where(a => a.Side == TurnSide.Defender && a.Status != OperativeStatus.Neutralized 
+                    && Utils.Distance(a.Position, objective.Position) <= Objective.Radius + a.Type.BaseDiameter / 2).Count();
 
-                ApplyAction(action);
+                if (attackerCount == 0 && defenderCount == 0)
+                    continue;
+
+                if (attackerCount > defenderCount)
+                    attackerScore++;
+
+                if (attackerCount < defenderCount)
+                    defenderScore++;
             }
 
-            // Update Operative States
-            if (actions.Count > 0)
-                CurrentOperativeStates[actions[0].Operative].Status = OperativeStatus.Activated;
+            _log.LogInformation($"**** End of Turning poin {turningPoint}, Score: Attacker {attackerScore} - Defender {defenderScore}");
 
-            // Next Side
-            SideTurn = GetOppositeSide(SideTurn);
         }
+
+        GameCount++;
+
+        return new Match(KillZone, InitialOperativeStates, playedActions, attackerScore, defenderScore);
     }
 
-    public Side InitiativeRoll()
-    {
-        var values = Enum.GetValues(typeof(Side));
-        var side = (Side)values.GetValue(Random.Shared.Next(values.Length))!;
 
-        _log.LogInformation($"{side} have the initiative");
+    public TurnSide InitiativeRoll()
+    {
+        var values = Enum.GetValues(typeof(TurnSide));
+        var side = (TurnSide)values.GetValue(Random.Shared.Next(values.Length))!;
 
         return side;
     }
 
-    public List<IOperativeAction> NextRandomAction()
-    {
-        var rand = Random.Shared;
 
-        // randomly select a ready operative
-        var readyOperatives = CurrentOperativeStates.Where(a => a.Status == OperativeStatus.Ready && a.Side == SideTurn).OrderBy(a => rand.Next()).ToArray();
-        if (readyOperatives.Length == 0)
-        {
-            _log.LogInformation("No operative to activate");
-            return [];
-        }
-
-        var operative = readyOperatives[0];
-        var operativeIndex = operative.Index;
-
-        // randomly select actions
-        var possibleActions = Enum.GetValues<OperativeActionType>().OrderBy(a => rand.Next()).Take(operative.Type.ActionPointLimit).ToArray();
-
-        var actions = new List<IOperativeAction>();
-
-        var position = operative.Position;
-
-        foreach (var possibleAction in possibleActions)
-        {
-            IOperativeAction selectedAction = null!;
-
-            switch (possibleAction)
-            {
-                case OperativeActionType.Move:
-                    selectedAction = GenerateRandomMoveAction(operative, ref position);
-                    break;
-
-                case OperativeActionType.Dash:
-                    selectedAction = GenerateRandomDashAction(operative, ref position);
-                    break;
-
-                case OperativeActionType.Shoot:
-                    selectedAction = GenerateRandomShootAction(operative, ref position);
-                    break;
-
-                default:
-                    throw new InvalidOperationException();
-            }
-
-            if (selectedAction != null)
-                actions.Add(selectedAction);
-        }
-
-        _log.LogInformation($"Selected operative: {operative.Type.Name} ({operativeIndex})");
-        foreach (var action in actions)
-            _log.LogInformation($"Choosen Action: {action}");
-
-        return actions;
-    }
-
-    Side GetOppositeSide(Side side)
+    TurnSide GetOppositeSide(TurnSide side)
     {
         return side switch
         {
-            Side.Attacker => Side.Defender,
-            Side.Defender => Side.Attacker,
+            TurnSide.Attacker => TurnSide.Defender,
+            TurnSide.Defender => TurnSide.Attacker,
             _ => throw new ArgumentException("Invalid side", nameof(side)),
         };
     }
 
-    void GenerateRandomMovePosition(OperativeState operative, float maxDist, ref Position position)
+    void GenerateRandomMovePosition(OperativeState operative, float maxDist, ref Position destination)
     {
         const int maxTries = 100;
         int guard = 0;
 
-        var destination = new Position();
+        destination = new Position();
         do
         {
-            destination.X = position.X + (2 * (float)Random.Shared.NextDouble() - 1) * maxDist;
-            destination.Y = position.Y + (2 * (float)Random.Shared.NextDouble() - 1) * maxDist;
+            destination.X = operative.Position.X + (2 * (float)Random.Shared.NextDouble() - 1) * maxDist;
+            destination.Y = operative.Position.Y + (2 * (float)Random.Shared.NextDouble() - 1) * maxDist;
             guard++;
-        } while (!IsMoveValid(operative, position, destination, maxDist) && guard < maxTries);
+        } while (!IsMoveValid(operative, destination, maxDist) && guard < maxTries);
 
         if (guard >= maxTries)
         {
             destination = operative.Position;
             _log.LogWarning("No valid move found");
         }
-
-        position = destination;
     }
 
-    bool IsMoveValid(OperativeState operative, Position source, Position destination, float maxDist)
+    bool IsMoveValid(OperativeState operative, Position destination, float maxDist)
     {
         // must be fully inside the killzone
         if (destination.X + (operative.Type.BaseDiameter / 2) >= KillZone.TotalWidth)
@@ -297,7 +228,7 @@ public class MatchTrainer : MatchRunnerBase
             return false;
 
         // no more than maxdist
-        if (Utils.Distance(source, destination) > maxDist)
+        if (Utils.Distance(operative.Position, destination) > maxDist)
             return false;
 
         var operativeCircle = new Circle(destination, operative.Type.BaseDiameter / 2);
@@ -324,21 +255,22 @@ public class MatchTrainer : MatchRunnerBase
         return true;
     }
 
-    OperativeMoveAction GenerateRandomMoveAction(OperativeState operative, ref Position position)
+    OperativeMoveAction GenerateRandomMoveAction(OperativeState operative)
     {
+        var position = new Position();
         GenerateRandomMovePosition(operative, operative.Type.Movement, ref position);
-
         return new OperativeMoveAction(operative.Index, position);
     }
 
-    OperativeDashAction GenerateRandomDashAction(OperativeState operative, ref Position position)
+    OperativeDashAction GenerateRandomDashAction(OperativeState operative)
     {
-        GenerateRandomMovePosition(operative, KillZone.SquareDistance, ref position);
 
+        var position = new Position();
+        GenerateRandomMovePosition(operative, KillZone.SquareDistance, ref position);
         return new OperativeDashAction(operative.Index, position);
     }
 
-    OperativeShootAction GenerateRandomShootAction(OperativeState operative, ref Position position)
+    OperativeShootAction GenerateRandomShootAction(OperativeState operative)
     {
         var enemySide = GetOppositeSide(operative.Side);
 
@@ -346,11 +278,10 @@ public class MatchTrainer : MatchRunnerBase
 
         foreach (var enemy in enemies)
         {
-            if (IsTargetValid(position, enemy.Position))
+            if (IsTargetValid(operative.Position, enemy.Position))
                 return new OperativeShootAction(operative.Index, enemy.Index);
         }
 
-        _log.LogWarning("No valid target found");
         return null!;
     }
 

@@ -7,20 +7,20 @@ namespace KTSim.Gui.Controls;
 
 public class KillzoneViewControl : Control
 {
-    private MatchTrainer? _simulator;
+    private MatchPlayer? _player;
 
-    public MatchTrainer? Simulator
+    public MatchPlayer? Player
     {
-        get { return _simulator; }
-        set { SetAndRaise(SimulatorProperty, ref _simulator, value); }
+        get { return _player; }
+        set { SetAndRaise(PlayerProperty, ref _player, value); }
     }
 
 
-    public static readonly DirectProperty<KillzoneViewControl, MatchTrainer?> SimulatorProperty =
-        AvaloniaProperty.RegisterDirect<KillzoneViewControl, MatchTrainer?>(
-            nameof(Simulator),
-            o => o.Simulator,
-            (o, v) => o.Simulator = v);
+    public static readonly DirectProperty<KillzoneViewControl, MatchPlayer?> PlayerProperty =
+        AvaloniaProperty.RegisterDirect<KillzoneViewControl, MatchPlayer?>(
+            nameof(Player),
+            o => o.Player,
+            (o, v) => o.Player = v);
 
     private IOperativeAction? _lastAction;
 
@@ -67,22 +67,22 @@ public class KillzoneViewControl : Control
     {
         context.FillRectangle(WhiteBrush, new Rect(Bounds.Size));
 
-        if (Simulator == null)
+        if (Player == null)
             return;
 
-        foreach (var dropZone in Simulator.KillZone.DropZones)
+        foreach (var dropZone in Player.KillZone.DropZones)
         {
-            var color = dropZone.Side == Side.Attacker ? PinkBrush : LightBlueBrush;
+            var color = dropZone.Side == TurnSide.Attacker ? PinkBrush : LightBlueBrush;
             context.FillRectangle(color, new Rect(dropZone.Position.X, dropZone.Position.Y, dropZone.Width, dropZone.Height));
         }
 
-        foreach (var objective in Simulator.KillZone.Objectives)
+        foreach (var objective in Player.KillZone.Objectives)
         {
             context.DrawEllipse(OrangeBrush, BlackPen,
                 new Rect(objective.Position.X - Objective.Radius, objective.Position.Y - Objective.Radius, Objective.Radius * 2, Objective.Radius * 2));
         }
 
-        foreach (var terrain in Simulator.KillZone.Terrains)
+        foreach (var terrain in Player.KillZone.Terrains)
         {
             var pen = BlackPen;
             if (terrain.Type.HasFlag(TerrainType.Traversable))
@@ -95,28 +95,39 @@ public class KillzoneViewControl : Control
             context.DrawRectangle(brush, pen, new Rect(terrain.Position.X - terrain.Width / 2, terrain.Position.Y - terrain.Height / 2, terrain.Width, terrain.Height));
         }
 
-        foreach (var operative in Simulator.CurrentOperativeStates)
+        // draw neutralized operatives
+        foreach (var operative in Player.CurrentOperativeStates)
         {
-            var brush = operative.Side == Side.Attacker ? RedBrush : BlueBrush;
-            var pen = BlackPen;
-
             if (operative.Status == OperativeStatus.Neutralized)
             {
-                brush = GrayBrush;
+                var brush = GrayBrush;
+                var pen = BlackPen;
 
+                float radius = operative.Type.BaseDiameter / 2;
+                context.DrawEllipse(brush, pen, new Rect(operative.Position.X - radius, operative.Position.Y - radius, radius * 2, radius * 2));
+
+                var text = new FormattedText(operative.Index.ToString(), System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, Typeface.Default, 12, WhiteBrush);
+                context.DrawText(text, new Point(operative.Position.X - text.Width / 2, operative.Position.Y - text.Height / 2));
+            }
+        }
+
+        foreach (var operative in Player.CurrentOperativeStates)
+        {
+            if (operative.Status == OperativeStatus.Neutralized)
+            {
+                continue;
             }
 
-            if (operative.Status == OperativeStatus.Activated)
-            {
-                brush = operative.Side == Side.Attacker ? DarkRedBrush : DarkBlueBrush;
-            }
+            var brush = operative.Side == TurnSide.Attacker ? RedBrush : BlueBrush;
+            var pen = BlackPen;
 
-            if (_lastAction != null)
+            if (_lastAction != null && _lastAction.Operative == operative.Index)
             {
-                if (_lastAction.Operative == operative.Index)
-                {
-                    pen = OrangePen;
-                }
+                pen = OrangePen;
+            }
+            else if (operative.Status == OperativeStatus.Activated)
+            {
+                brush = operative.Side == TurnSide.Attacker ? DarkRedBrush : DarkBlueBrush;
             }
 
             float radius = operative.Type.BaseDiameter / 2;
@@ -131,15 +142,15 @@ public class KillzoneViewControl : Control
             switch (_lastAction)
             {
                 case OperativeMoveAction moveAction:
-                    context.DrawLine(BluePen, new Point(Simulator.CurrentOperativeStates[moveAction.Operative].Position.X, Simulator.CurrentOperativeStates[moveAction.Operative].Position.Y), new Point(moveAction.Destination.X, moveAction.Destination.Y));
+                    context.DrawLine(BluePen, new Point(Player.CurrentOperativeStates[moveAction.Operative].Position.X, Player.CurrentOperativeStates[moveAction.Operative].Position.Y), new Point(moveAction.Destination.X, moveAction.Destination.Y));
                     break;
                 case OperativeDashAction dashAction:
-                    context.DrawLine(GreenPen, new Point(Simulator.CurrentOperativeStates[dashAction.Operative].Position.X, Simulator.CurrentOperativeStates[dashAction.Operative].Position.Y), new Point(dashAction.Destination.X, dashAction.Destination.Y));
+                    context.DrawLine(GreenPen, new Point(Player.CurrentOperativeStates[dashAction.Operative].Position.X, Player.CurrentOperativeStates[dashAction.Operative].Position.Y), new Point(dashAction.Destination.X, dashAction.Destination.Y));
                     break;
 
                 case OperativeShootAction shootAction:
-                    context.DrawLine(RedPen, new Point(Simulator.CurrentOperativeStates[shootAction.Operative].Position.X, Simulator.CurrentOperativeStates[shootAction.Operative].Position.Y),
-                        new Point(Simulator.CurrentOperativeStates[shootAction.Target].Position.X, Simulator.CurrentOperativeStates[shootAction.Target].Position.Y));
+                    context.DrawLine(RedPen, new Point(Player.CurrentOperativeStates[shootAction.Operative].Position.X, Player.CurrentOperativeStates[shootAction.Operative].Position.Y),
+                        new Point(Player.CurrentOperativeStates[shootAction.Target].Position.X, Player.CurrentOperativeStates[shootAction.Target].Position.Y));
                     break;
             }
         }

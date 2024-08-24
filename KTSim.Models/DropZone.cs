@@ -8,9 +8,9 @@ public class DropZone
     public float Width { get; }
     public float Height { get; }
 
-    public Side Side { get; }
+    public TurnSide Side { get; }
 
-    public DropZone(Position position, float width, float height, Side side)
+    public DropZone(Position position, float width, float height, TurnSide side)
     {
         Position = position;
         Width = width;
