@@ -1,28 +1,24 @@
 namespace KTSim.Models;
 
-public class MatchPlayer : MatchRunnerBase
+public class MatchPlayer
 {
 
     Match _match;
 
+    MatchState _matchState;
+
     public bool IsFinished { get; private set; }
+
+    public KillZone KillZone => _match.KillZone;
+    public OperativeState[] CurrentOperativeStates => _matchState.OperativeStates.ToArray();
 
     private int _actionIndex;
 
     public MatchPlayer(Match match)
-        : base(match.KillZone, match.InitialOperativeStates)
     {
         _match = match;
+        _matchState = new MatchState(match.KillZone, match.InitialOperativeStates.ToArray());
         _actionIndex = 0;
-        IsFinished = false;
-
-        Reset();
-    }
-
-    public override void Reset()
-    {
-        base.Reset();
-        _actionIndex = -1;
         IsFinished = false;
     }
 
@@ -37,20 +33,13 @@ public class MatchPlayer : MatchRunnerBase
         if (_actionIndex > 0)
         {
             var previousAction = _match.PlayedActions[_actionIndex];
-            ApplyAction(previousAction);
-            CurrentOperativeStates[previousAction.Operative].Status = OperativeStatus.Activated;
+            _matchState.ApplyAction(previousAction);
+            _matchState.OperativeStates[previousAction.Operative].Status = OperativeStatus.Activated;
         }
 
 
-        if (CurrentOperativeStates.Where(x => x.Status == OperativeStatus.Ready).Count() == 0)
-        {
-            foreach (var operativeState in CurrentOperativeStates)
-            {
-                if (operativeState.Status != OperativeStatus.Neutralized)
-                    operativeState.Status = OperativeStatus.Ready;
-            }
-        }
-
+        if (_matchState.TurningPointFinished())
+            _matchState.ReadyOperatives();
 
         var action = _match.PlayedActions[_actionIndex + 1];
         _actionIndex++;

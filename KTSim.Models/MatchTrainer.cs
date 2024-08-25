@@ -1,19 +1,18 @@
 using Microsoft.Extensions.Logging;
-using Tensorboard;
 
 namespace KTSim.Models;
 
-public enum TurnSide
-{
-    Attacker,
-    Defender,
-}
-
-public class MatchTrainer : MatchRunnerBase
+public class MatchTrainer
 {
     ILogger<MatchTrainer> _log;
 
+    KillZone _killZone;
+    MatchState _initialState;
+
     public int GameCount { get; private set; } = 0;
+
+    AINet _aiNet;
+    AITrainer _aiTrainer;
 
     public MatchTrainer()
     {
@@ -30,7 +29,7 @@ public class MatchTrainer : MatchRunnerBase
         _log = factory.CreateLogger<MatchTrainer>();
 
         // create KillZone
-        KillZone = new KillZone();
+        _killZone = new KillZone();
 
         // create Operatives
         var operatives = new List<OperativeState>();
@@ -38,27 +37,29 @@ public class MatchTrainer : MatchRunnerBase
         var attacker = new KommandoBoyOperative();
         for (var i = 0; i < 10; i++)
         {
-            var operativeState = new OperativeState(operatives.Count, attacker, TurnSide.Attacker, OperativeStatus.Ready, new Position(30 + 40 * i, 30));
+            var operativeState = new OperativeState(operatives.Count, attacker, TeamSide.Attacker, OperativeStatus.Ready, new Position(30 + 40 * i, 30));
             operatives.Add(operativeState);
         }
 
         var defender = new VeteranTrooperOperative();
         for (var i = 0; i < 10; i++)
         {
-            var operativeState = new OperativeState(operatives.Count, defender, TurnSide.Defender, OperativeStatus.Ready, new Position(KillZone.TotalWidth - 30 - 40 * i, KillZone.TotalHeight - 30));
+            var operativeState = new OperativeState(operatives.Count, defender, TeamSide.Defender, OperativeStatus.Ready, new Position(KillZone.TotalWidth - 30 - 40 * i, KillZone.TotalHeight - 30));
             operatives.Add(operativeState);
         }
 
-        InitialOperativeStates = operatives;
+        _initialState = new MatchState(_killZone, operatives.ToArray());
 
-        Reset();
+        // create AI
+        _aiNet = new AINet();
+        _aiTrainer = new AITrainer(_aiNet);
     }
 
     public Match GenerateMatch()
     {
-        Reset();
-
         _log.LogInformation($"Match {GameCount} started");
+
+        var currentState = _initialState.Copy();
 
         var playedActions = new List<IOperativeAction>();
 
@@ -71,19 +72,15 @@ public class MatchTrainer : MatchRunnerBase
             var sideTurn = InitiativeRoll();
 
             // prepare operatives
-            foreach (var operative in CurrentOperativeStates)
-            {
-                if (operative.Status != OperativeStatus.Neutralized)
-                    operative.Status = OperativeStatus.Ready;
-            }
+            currentState.ReadyOperatives();
 
             // turning point starts
             _log.LogInformation($"Turning Point {turningPoint}, {sideTurn} have the initiative");
 
-            while (CurrentOperativeStates.Where(a => a.Status == OperativeStatus.Ready).Count() > 0)
+            while (!currentState.TurningPointFinished())
             {
                 // select random operative
-                var operative = CurrentOperativeStates.Where(a => a.Status == OperativeStatus.Ready && a.Side == sideTurn).OrderBy(a => Random.Shared.Next()).FirstOrDefault();
+                var operative = currentState.SelectRandomOperative(sideTurn);
 
                 if (operative != null)
                 {
@@ -98,13 +95,13 @@ public class MatchTrainer : MatchRunnerBase
                         // by order of priority
                         if (!shoot)
                         {
-                            var action = GenerateRandomShootAction(operative);
+                            var action = currentState.GenerateRandomShootAction(operative);
 
                             if (action != null)
                             {
                                 _log.LogInformation($"Choosen Action {i}: {action}");
                                 playedActions.Add(action);
-                                ApplyAction(action);
+                                currentState.ApplyAction(action);
                                 shoot = true;
                                 continue;
                             }
@@ -112,13 +109,13 @@ public class MatchTrainer : MatchRunnerBase
 
                         if (!move)
                         {
-                            var action = GenerateRandomMoveAction(operative);
+                            var action = currentState.GenerateRandomMoveAction(operative);
 
                             if (action != null)
                             {
                                 _log.LogInformation($"Choosen Action {i}: {action}");
                                 playedActions.Add(action);
-                                ApplyAction(action);
+                                currentState.ApplyAction(action);
                                 move = true;
                                 continue;
                             }
@@ -126,13 +123,13 @@ public class MatchTrainer : MatchRunnerBase
 
                         if (!dash)
                         {
-                            var action = GenerateRandomDashAction(operative);
+                            var action = currentState.GenerateRandomDashAction(operative);
 
                             if (action != null)
                             {
                                 _log.LogInformation($"Choosen Action {i}: {action}");
                                 playedActions.Add(action);
-                                ApplyAction(action);
+                                currentState.ApplyAction(action);
                                 dash = true;
                                 continue;
                             }
@@ -144,163 +141,50 @@ public class MatchTrainer : MatchRunnerBase
                     operative.Status = OperativeStatus.Activated;
                 }
 
+                _aiTrainer.Train(currentState, playedActions.ToArray(), currentState, 0);
+
+
                 // apply action
-                sideTurn = GetOppositeSide(sideTurn);
+                sideTurn = sideTurn.GetOppositeSide();
             }
 
             // compute score
-            foreach (var objective in KillZone.Objectives)
+            var attackerTurnScore = 0;
+            var defenderTurnScore = 0;
+            foreach (var objective in _killZone.Objectives)
             {
-                var attackerCount = CurrentOperativeStates.Where(a => a.Side == TurnSide.Attacker && a.Status != OperativeStatus.Neutralized 
+                var attackerCount = currentState.OperativeStates.Where(a => a.Side == TeamSide.Attacker && a.Status != OperativeStatus.Neutralized
                     && Utils.Distance(a.Position, objective.Position) <= Objective.Radius + a.Type.BaseDiameter / 2).Count();
-                var defenderCount = CurrentOperativeStates.Where(a => a.Side == TurnSide.Defender && a.Status != OperativeStatus.Neutralized 
+                var defenderCount = currentState.OperativeStates.Where(a => a.Side == TeamSide.Defender && a.Status != OperativeStatus.Neutralized
                     && Utils.Distance(a.Position, objective.Position) <= Objective.Radius + a.Type.BaseDiameter / 2).Count();
 
                 if (attackerCount == 0 && defenderCount == 0)
                     continue;
 
                 if (attackerCount > defenderCount)
-                    attackerScore++;
+                    attackerTurnScore++;
 
                 if (attackerCount < defenderCount)
-                    defenderScore++;
+                    defenderTurnScore++;
             }
 
-            _log.LogInformation($"**** End of Turning poin {turningPoint}, Score: Attacker {attackerScore} - Defender {defenderScore}");
+            attackerScore += attackerTurnScore;
+            defenderScore += defenderTurnScore;
+            _log.LogInformation($"*** End of Turning poin {turningPoint}, Score: Attacker {attackerTurnScore}/{attackerScore} - Defender {defenderTurnScore}/{defenderScore}");
 
         }
 
         GameCount++;
 
-        return new Match(KillZone, InitialOperativeStates, playedActions, attackerScore, defenderScore);
+        return new Match(_killZone, _initialState.OperativeStates.ToList(), playedActions, attackerScore, defenderScore);
     }
 
 
-    public TurnSide InitiativeRoll()
+    public TeamSide InitiativeRoll()
     {
-        var values = Enum.GetValues(typeof(TurnSide));
-        var side = (TurnSide)values.GetValue(Random.Shared.Next(values.Length))!;
+        var values = Enum.GetValues(typeof(TeamSide));
+        var side = (TeamSide)values.GetValue(Random.Shared.Next(values.Length))!;
 
         return side;
     }
-
-
-    TurnSide GetOppositeSide(TurnSide side)
-    {
-        return side switch
-        {
-            TurnSide.Attacker => TurnSide.Defender,
-            TurnSide.Defender => TurnSide.Attacker,
-            _ => throw new ArgumentException("Invalid side", nameof(side)),
-        };
-    }
-
-    void GenerateRandomMovePosition(OperativeState operative, float maxDist, ref Position destination)
-    {
-        const int maxTries = 100;
-        int guard = 0;
-
-        destination = new Position();
-        do
-        {
-            destination.X = operative.Position.X + (2 * (float)Random.Shared.NextDouble() - 1) * maxDist;
-            destination.Y = operative.Position.Y + (2 * (float)Random.Shared.NextDouble() - 1) * maxDist;
-            guard++;
-        } while (!IsMoveValid(operative, destination, maxDist) && guard < maxTries);
-
-        if (guard >= maxTries)
-        {
-            destination = operative.Position;
-            _log.LogWarning("No valid move found");
-        }
-    }
-
-    bool IsMoveValid(OperativeState operative, Position destination, float maxDist)
-    {
-        // must be fully inside the killzone
-        if (destination.X + (operative.Type.BaseDiameter / 2) >= KillZone.TotalWidth)
-            return false;
-        if (destination.Y + (operative.Type.BaseDiameter / 2) >= KillZone.TotalHeight)
-            return false;
-        if (destination.X - (operative.Type.BaseDiameter / 2) < 0)
-            return false;
-        if (destination.Y - (operative.Type.BaseDiameter / 2) < 0)
-            return false;
-
-        // no more than maxdist
-        if (Utils.Distance(operative.Position, destination) > maxDist)
-            return false;
-
-        var operativeCircle = new Circle(destination, operative.Type.BaseDiameter / 2);
-
-        // no collision with other operatives
-        foreach (var other in CurrentOperativeStates)
-        {
-            if (other.Index == operative.Index)
-                continue;
-            if (other.Status == OperativeStatus.Neutralized)
-                continue;
-
-            if (Utils.Intersects(operativeCircle, new Circle(other.Position, other.Type.BaseDiameter / 2)))
-                return false;
-        }
-
-        // no collision with terrains
-        foreach (var terrain in KillZone.Terrains)
-        {
-            if (Utils.Intersects(operativeCircle, new Rectangle(terrain.Position, terrain.Width, terrain.Height)))
-                return false;
-        }
-
-        return true;
-    }
-
-    OperativeMoveAction GenerateRandomMoveAction(OperativeState operative)
-    {
-        var position = new Position();
-        GenerateRandomMovePosition(operative, operative.Type.Movement, ref position);
-        return new OperativeMoveAction(operative.Index, position);
-    }
-
-    OperativeDashAction GenerateRandomDashAction(OperativeState operative)
-    {
-
-        var position = new Position();
-        GenerateRandomMovePosition(operative, KillZone.SquareDistance, ref position);
-        return new OperativeDashAction(operative.Index, position);
-    }
-
-    OperativeShootAction GenerateRandomShootAction(OperativeState operative)
-    {
-        var enemySide = GetOppositeSide(operative.Side);
-
-        var enemies = CurrentOperativeStates.Where(a => a.Side == enemySide && a.Status != OperativeStatus.Neutralized).OrderBy(a => Random.Shared.Next()).ToArray();
-
-        foreach (var enemy in enemies)
-        {
-            if (IsTargetValid(operative.Position, enemy.Position))
-                return new OperativeShootAction(operative.Index, enemy.Index);
-        }
-
-        return null!;
-    }
-
-    bool IsTargetValid(Position source, Position target)
-    {
-        var segment = new Segment(source, target);
-
-        // no collision with terrains
-        foreach (var terrain in KillZone.Terrains)
-        {
-            //if (!terrain.Type.HasFlag(TerrainType.Heavy))
-            //    continue;
-
-            if (Utils.Intersects(segment, new Rectangle(terrain.Position, terrain.Width, terrain.Height)))
-                return false;
-        }
-
-        // TODO: no collision with other operatives
-        return true;
-    }
-
 }

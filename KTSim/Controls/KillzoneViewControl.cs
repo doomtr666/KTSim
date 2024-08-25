@@ -72,7 +72,7 @@ public class KillzoneViewControl : Control
 
         foreach (var dropZone in Player.KillZone.DropZones)
         {
-            var color = dropZone.Side == TurnSide.Attacker ? PinkBrush : LightBlueBrush;
+            var color = dropZone.Side == TeamSide.Attacker ? PinkBrush : LightBlueBrush;
             context.FillRectangle(color, new Rect(dropZone.Position.X, dropZone.Position.Y, dropZone.Width, dropZone.Height));
         }
 
@@ -118,7 +118,7 @@ public class KillzoneViewControl : Control
                 continue;
             }
 
-            var brush = operative.Side == TurnSide.Attacker ? RedBrush : BlueBrush;
+            var brush = operative.Side == TeamSide.Attacker ? RedBrush : BlueBrush;
             var pen = BlackPen;
 
             if (_lastAction != null && _lastAction.Operative == operative.Index)
@@ -127,7 +127,7 @@ public class KillzoneViewControl : Control
             }
             else if (operative.Status == OperativeStatus.Activated)
             {
-                brush = operative.Side == TurnSide.Attacker ? DarkRedBrush : DarkBlueBrush;
+                brush = operative.Side == TeamSide.Attacker ? DarkRedBrush : DarkBlueBrush;
             }
 
             float radius = operative.Type.BaseDiameter / 2;
