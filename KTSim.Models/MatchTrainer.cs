@@ -176,7 +176,7 @@ public class MatchTrainer
 
         GameCount++;
 
-        return new Match(_killZone, _initialState.OperativeStates.ToList(), playedActions, attackerScore, defenderScore);
+        return new Match(_killZone, _initialState.Copy().OperativeStates, playedActions.ToArray(), attackerScore, defenderScore);
     }
 
 

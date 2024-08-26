@@ -24,11 +24,14 @@ public class MatchPlayer
 
     public IOperativeAction? NextStep()
     {
-        if (_actionIndex >= _match.PlayedActions.Count - 1)
+        if (_actionIndex >= _match.PlayedActions.Length - 1)
         {
             IsFinished = true;
             return null;
         }
+
+        if (_matchState.TurningPointFinished())
+            _matchState.ReadyOperatives();
 
         if (_actionIndex > 0)
         {
@@ -36,10 +39,6 @@ public class MatchPlayer
             _matchState.ApplyAction(previousAction);
             _matchState.OperativeStates[previousAction.Operative].Status = OperativeStatus.Activated;
         }
-
-
-        if (_matchState.TurningPointFinished())
-            _matchState.ReadyOperatives();
 
         var action = _match.PlayedActions[_actionIndex + 1];
         _actionIndex++;
