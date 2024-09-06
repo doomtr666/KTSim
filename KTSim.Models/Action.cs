@@ -1,10 +1,11 @@
 namespace KTSim.Models;
 
+[Flags]
 public enum OperativeActionType
 {
-    Move,
-    Dash,
-    Shoot,
+    Move = 1 << 0,
+    Dash = 1 << 1,
+    Shoot = 1 << 2,
 }
 
 public interface IOperativeAction
@@ -26,7 +27,7 @@ public class OperativeMoveAction : IOperativeAction
 
     public override string ToString()
     {
-        return $"{Operative} Move To ({Destination.X},{Destination.Y})";
+        return $"{Operative} Move To ({Destination.X};{Destination.Y})";
     }
 }
 
@@ -43,7 +44,7 @@ public class OperativeDashAction : IOperativeAction
 
     public override string ToString()
     {
-        return $"{Operative} Dash To ({Destination.X}{Destination.Y})";
+        return $"{Operative} Dash To ({Destination.X};{Destination.Y})";
     }
 }
 

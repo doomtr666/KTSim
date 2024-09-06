@@ -1,47 +1,43 @@
+using Microsoft.Extensions.Logging;
+
 namespace KTSim.Models;
 
 public class MatchPlayer
 {
-
     Match _match;
 
     MatchState _matchState;
 
-    public bool IsFinished { get; private set; }
+    public bool IsFinished => _matchState.IsFinished;
 
     public KillZone KillZone => _match.KillZone;
-    public OperativeState[] CurrentOperativeStates => _matchState.OperativeStates.ToArray();
+    public OperativeState[] CurrentOperativeStates => _matchState.OperativeStates;
 
     private int _actionIndex;
+
+    private IOperativeAction? _previousAction;
 
     public MatchPlayer(Match match)
     {
         _match = match;
-        _matchState = new MatchState(match.KillZone, match.InitialOperativeStates.ToArray());
+        _matchState = new MatchState(match.KillZone, match.InitialOperativeStates, match.InitiativeRolls);
         _actionIndex = 0;
-        IsFinished = false;
     }
 
     public IOperativeAction? NextStep()
     {
-        if (_actionIndex >= _match.PlayedActions.Length - 1)
-        {
-            IsFinished = true;
+        if (IsFinished)
             return null;
-        }
 
-        if (_matchState.TurningPointFinished())
-            _matchState.ReadyOperatives();
-
-        if (_actionIndex > 0)
+        var action = _match.PlayedActions[_actionIndex];
+        if (_previousAction != null)
         {
-            var previousAction = _match.PlayedActions[_actionIndex];
-            _matchState.ApplyAction(previousAction);
-            _matchState.OperativeStates[previousAction.Operative].Status = OperativeStatus.Activated;
+            Logger.Instance.LogDebug($"Previous action: {_previousAction}");
+            _matchState.ApplyAction(_previousAction);
         }
-
-        var action = _match.PlayedActions[_actionIndex + 1];
+        _previousAction = action;
         _actionIndex++;
+
         return action;
     }
 
