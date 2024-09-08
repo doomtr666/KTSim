@@ -12,11 +12,10 @@ public class MatchPlayer
 
     public KillZone KillZone => _match.KillZone;
     public OperativeState[] CurrentOperativeStates => _matchState.OperativeStates;
+    public int AttackerScore => _matchState.AttackerScore;
+    public int DefenderScore => _matchState.DefenderScore;
 
     private int _actionIndex;
-
-    private IOperativeAction? _previousAction;
-
     public MatchPlayer(Match match)
     {
         _match = match;
@@ -29,13 +28,12 @@ public class MatchPlayer
         if (IsFinished)
             return null;
 
-        var action = _match.PlayedActions[_actionIndex];
-        if (_previousAction != null)
+        var action = _match.PlayedActions[_actionIndex / 2];
+        if (_actionIndex % 2 == 1)
         {
-            Logger.Instance.LogDebug($"Previous action: {_previousAction}");
-            _matchState.ApplyAction(_previousAction);
+            _matchState.ApplyAction(action);
+            action = null;
         }
-        _previousAction = action;
         _actionIndex++;
 
         return action;

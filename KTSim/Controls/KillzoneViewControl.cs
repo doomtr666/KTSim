@@ -15,7 +15,6 @@ public class KillzoneViewControl : Control
         set { SetAndRaise(PlayerProperty, ref _player, value); }
     }
 
-
     public static readonly DirectProperty<KillzoneViewControl, MatchPlayer?> PlayerProperty =
         AvaloniaProperty.RegisterDirect<KillzoneViewControl, MatchPlayer?>(
             nameof(Player),
@@ -125,6 +124,10 @@ public class KillzoneViewControl : Control
             {
                 pen = OrangePen;
             }
+            else if (operative.Status == OperativeStatus.Active)
+            {
+                pen = OrangePen;
+            }
             else if (operative.Status == OperativeStatus.Activated)
             {
                 brush = operative.Side == TeamSide.Attacker ? DarkRedBrush : DarkBlueBrush;
@@ -154,6 +157,10 @@ public class KillzoneViewControl : Control
                     break;
             }
         }
+
+        // draw scores
+        var score = new FormattedText($"{Player.AttackerScore} / {Player.DefenderScore}", System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, Typeface.Default, 12, WhiteBrush);
+        context.DrawText(score, new Point(KillZone.TotalWidth - 30, 10));
 
         base.Render(context);
     }

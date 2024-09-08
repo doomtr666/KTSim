@@ -20,7 +20,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
-        _timer = new DispatcherTimer(TimeSpan.FromMilliseconds(800), DispatcherPriority.Normal, (s, e) => NextStep());
+        _timer = new DispatcherTimer(TimeSpan.FromMilliseconds(500), DispatcherPriority.Normal, (s, e) => NextStep());
         _timer.Start();
     }
 
