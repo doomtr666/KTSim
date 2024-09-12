@@ -2,6 +2,8 @@
 using Avalonia.Threading;
 using KTSim.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Tensorboard;
+using System.Threading.Tasks;
 
 namespace KTSim.Gui.ViewModels;
 
@@ -20,12 +22,15 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
-        _timer = new DispatcherTimer(TimeSpan.FromMilliseconds(500), DispatcherPriority.Normal, (s, e) => NextStep());
+
+        _timer = new DispatcherTimer(TimeSpan.FromMilliseconds(100), DispatcherPriority.Normal, (s, e) => NextStep());
         _timer.Start();
     }
 
+
     void NextStep()
     {
+        _trainer.GenerateMatch();
         if (Player == null || Player.IsFinished)
         {
             var match = _trainer.GenerateMatch();

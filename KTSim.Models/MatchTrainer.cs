@@ -32,8 +32,10 @@ public class MatchTrainer
 
     public int GameCount { get; private set; } = 0;
 
-    AINet _aiNet;
-    AITrainer _aiTrainer;
+    int attackerWins = 0;
+
+    AITrainer _attackerAI;
+    AITrainer _defenderAI;
 
     public MatchTrainer()
     {
@@ -61,9 +63,9 @@ public class MatchTrainer
 
         _initialState = new MatchState(_killZone, operatives.ToArray());
 
-        // create AI
-        _aiNet = new AINet();
-        _aiTrainer = new AITrainer(_aiNet, TeamSide.Attacker);
+        // create AIs
+        _attackerAI = new AITrainer(TeamSide.Attacker);
+        _defenderAI = new AITrainer(TeamSide.Defender);
     }
 
     public Match GenerateMatch()
@@ -76,13 +78,37 @@ public class MatchTrainer
 
         while (!matchState.IsFinished)
         {
-            var action = matchState.GenerateAction();
+            IOperativeAction action = null!;
+
+            if (matchState.CurrentTurn == TeamSide.Attacker)
+            {
+                action = matchState.GenerateAction();
+            }
+            else
+            {
+                action = _defenderAI.GenerateAction(matchState);
+                _defenderAI.TrainLast();
+            }
+
             playedActions.Add(action);
             matchState.ApplyAction(action);
         }
+
+        //_attackerAI.TrainBatch();
+        _defenderAI.TrainBatch();
+
         sw.Stop();
 
-        _log.LogInformation($"Match {GameCount} finished ({sw.Elapsed.TotalMilliseconds} ms), Attacker: {matchState.AttackerScore}, Defender: {matchState.DefenderScore}");
+        GameCount++;
+        _log.LogInformation($"Match {GameCount} finished ({sw.Elapsed.TotalMilliseconds} ms), Attacker: {matchState.AttackerScore}, Defender: {matchState.DefenderScore}, Attacker Win Rate: {(float)attackerWins / GameCount:P} Defender Win Rate: {(float)(GameCount - attackerWins) / GameCount:P}");
+
+
+
+        if (matchState.AttackerScore > matchState.DefenderScore)
+        {
+            attackerWins++;
+        }
+
 
         return new Match(_killZone, _initialState.Copy().OperativeStates, playedActions.ToArray(), matchState.InitiativeRolls, matchState.AttackerScore, matchState.DefenderScore);
     }

@@ -376,7 +376,7 @@ public class MatchState
         // check if the operative exists
         if (action.Operative < 0 || action.Operative >= OperativeStates.Length)
         {
-            _log.LogError($"Invalid Operative {action.Operative}");
+            //_log.LogError($"Invalid Operative {action.Operative}");
             return false;
         }
 
@@ -386,7 +386,7 @@ public class MatchState
             // if an operative is active, it must be selected
             if (activeOperative.Index != action.Operative)
             {
-                _log.LogError($"Operative {activeOperative.Index} is active ({action.Operative})");
+                //_log.LogError($"Operative {activeOperative.Index} is active ({action.Operative})");
                 return false;
             }
         }
@@ -395,7 +395,7 @@ public class MatchState
             // otherwise, operative must be ready
             if (OperativeStates[action.Operative].Status != OperativeStatus.Ready)
             {
-                _log.LogError($"Operative {action.Operative} is not ready");
+                //_log.LogError($"Operative {action.Operative} is not ready");
                 return false;
             }
         }
@@ -403,7 +403,7 @@ public class MatchState
         // check if the operative is on the correct side
         if (OperativeStates[action.Operative].Side != CurrentTurn)
         {
-            _log.LogError($"Operative {action.Operative} is on the wrong side");
+            //_log.LogError($"Operative {action.Operative} is on the wrong side");
             return false;
         }
 
@@ -426,28 +426,28 @@ public class MatchState
                 // check if the target exists
                 if (shootAction.Target < 0 || shootAction.Target >= OperativeStates.Length)
                 {
-                    _log.LogError($"Invalid Target {shootAction.Target}");
+                    //_log.LogError($"Invalid Target {shootAction.Target}");
                     return false;
                 }
 
                 // check if the target is on the correct side
                 if (OperativeStates[shootAction.Target].Side == OperativeStates[shootAction.Operative].Side)
                 {
-                    _log.LogError($"Target {shootAction.Target} is on the wrong side");
+                    //_log.LogError($"Target {shootAction.Target} is on the wrong side");
                     return false;
                 }
 
                 // check if the target is not neutralized
                 if (OperativeStates[shootAction.Target].Status == OperativeStatus.Neutralized)
                 {
-                    _log.LogError($"Target {shootAction.Target} is already neutralized");
+                    //_log.LogError($"Target {shootAction.Target} is already neutralized");
                     return false;
                 }
 
                 // check if the target is visible
                 if (!IsTargetVisible(OperativeStates[shootAction.Operative].Position, OperativeStates[shootAction.Target].Position))
                 {
-                    _log.LogError($"Target {shootAction.Target} is not visible");
+                    //_log.LogError($"Target {shootAction.Target} is not visible");
                     return false;
                 }
 
@@ -455,7 +455,7 @@ public class MatchState
         }
 
         // should never reach here
-        _log.LogError($"Invalid action {action}");
+        //_log.LogError($"Invalid action {action}");
         return false;
     }
 
