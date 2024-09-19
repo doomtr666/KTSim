@@ -3,32 +3,6 @@ namespace KTSim.Models;
 using TorchSharp;
 using TorchSharp.Modules;
 
-/* Tensors structure
-    * 
-    * AIState
-    *  - OperativeStates
-    *      - 0 PositionX
-    *      - 1 PositionY
-    *      - 2 HasMoved
-    *      - 3 HasDashed
-    *      - 4 HasShot
-    *      - 5 Ready
-    *      - 6 Active
-    *      - 7 Activated
-    *      - 8 Neutralized
-    * 
-    * AIAction
-    *  - OperativeActions
-    *      - 0 ShootReward 
-    *      - 1 Target
-    *      - 2 MoveReward
-    *      - 3 MoveX
-    *      - 4 MoveY
-    *      - 5 DashReward
-    *      - 6 DashX
-    *      - 7 DashY
-*/
-
 public class AINet : torch.nn.Module<torch.Tensor, torch.Tensor>
 {
     public const int InputParameters = 9;
@@ -37,7 +11,6 @@ public class AINet : torch.nn.Module<torch.Tensor, torch.Tensor>
     const int InputSize = InputParameters * 20;
     const int OutputSize = OutputParameters * 20;
     const int HidenSize1 = 1024;
-
 
     torch.nn.Module<torch.Tensor, torch.Tensor> _inputLayer;
     torch.nn.Module<torch.Tensor, torch.Tensor> _outputLayer;
@@ -57,30 +30,30 @@ public class AINet : torch.nn.Module<torch.Tensor, torch.Tensor>
     }
 }
 
-
 public class AITrainer
 {
-    private TeamSide Side { get; }
-
     public AINet Net { get; }
 
     const int MemorySize = 100000;
-    const int BatchSize = 32;
+    const int BatchSize = 64;
     const float LearningRate = 0.001f;
     const float Gamma = 0.9f;
     const float MaxEpsilon = 0.9f;
     const float MinEpsilon = 0.01f;
-    const float EpsilonDecay = -0.01f;
+    const float EpsilonDecay = -0.005f;
 
     List<(MatchState, IOperativeAction, MatchState, float)> _memory = [];
 
     torch.optim.Optimizer _optimizer;
     MSELoss _criterion;
 
+    static int _espilonStep = 0;
+
+    private MovingAverage _validActions = new MovingAverage(1000);
+
     public AITrainer(TeamSide side)
     {
         Net = new AINet();
-        Side = side;
         _optimizer = torch.optim.Adam(Net.parameters(), LearningRate);
         _criterion = torch.nn.MSELoss();
     }
@@ -90,15 +63,16 @@ public class AITrainer
         var flatState = new float[state.OperativeStates.Length * AINet.InputParameters];
         for (int i = 0; i < state.OperativeStates.Length; i++)
         {
-            flatState[i * AINet.InputParameters] = state.OperativeStates[i].Position.X / KillZone.TotalWidth;
-            flatState[i * AINet.InputParameters + 1] = state.OperativeStates[i].Position.Y / KillZone.TotalHeight;
-            flatState[i * AINet.InputParameters + 2] = state.OperativeStates[i].PerformedActions.HasFlag(OperativeActionType.Move) ? 1 : 0;
-            flatState[i * AINet.InputParameters + 3] = state.OperativeStates[i].PerformedActions.HasFlag(OperativeActionType.Dash) ? 1 : 0;
-            flatState[i * AINet.InputParameters + 4] = state.OperativeStates[i].PerformedActions.HasFlag(OperativeActionType.Shoot) ? 1 : 0;
-            flatState[i * AINet.InputParameters + 5] = state.OperativeStates[i].Status == OperativeStatus.Ready ? 1 : 0;
-            flatState[i * AINet.InputParameters + 6] = state.OperativeStates[i].Status == OperativeStatus.Active ? 1 : 0;
-            flatState[i * AINet.InputParameters + 7] = state.OperativeStates[i].Status == OperativeStatus.Activated ? 1 : 0;
-            flatState[i * AINet.InputParameters + 8] = state.OperativeStates[i].Status == OperativeStatus.Neutralized ? 1 : 0;
+            var operativeState = state.OperativeStates[i];
+            flatState[i * AINet.InputParameters] = operativeState.Position.X / KillZone.TotalWidth;
+            flatState[i * AINet.InputParameters + 1] = operativeState.Position.Y / KillZone.TotalHeight;
+            flatState[i * AINet.InputParameters + 2] = operativeState.PerformedActions.HasFlag(OperativeActionType.Move) ? 1 : 0;
+            flatState[i * AINet.InputParameters + 3] = operativeState.PerformedActions.HasFlag(OperativeActionType.Dash) ? 1 : 0;
+            flatState[i * AINet.InputParameters + 4] = operativeState.PerformedActions.HasFlag(OperativeActionType.Shoot) ? 1 : 0;
+            flatState[i * AINet.InputParameters + 5] = operativeState.Status == OperativeStatus.Ready ? 1 : 0;
+            flatState[i * AINet.InputParameters + 6] = operativeState.Status == OperativeStatus.Active ? 1 : 0;
+            flatState[i * AINet.InputParameters + 7] = operativeState.Status == OperativeStatus.Activated ? 1 : 0;
+            flatState[i * AINet.InputParameters + 8] = operativeState.Status == OperativeStatus.Neutralized ? 1 : 0;
         }
         return torch.tensor(flatState);
     }
@@ -108,21 +82,23 @@ public class AITrainer
         // extract all data form each operative
         var actions = new List<(float, IOperativeAction)>();
 
+        var data = tensor.data<float>().ToArray();
+
         for (var i = 0; i < 20; i++)
         {
 
-            var shootReward = (float)tensor[i * AINet.OutputParameters];
-            var shootAction = new OperativeShootAction(i, (int)(tensor[i * AINet.OutputParameters + 1] * 20));
+            var shootReward = data[i * AINet.OutputParameters];
+            var shootAction = new OperativeShootAction(i, (int)(data[i * AINet.OutputParameters + 1] * 20));
             actions.Add((shootReward, shootAction));
 
-            var moveReward = (float)tensor[i * AINet.OutputParameters + 2];
+            var moveReward = data[i * AINet.OutputParameters + 2];
             var moveAction = new OperativeMoveAction(i,
-                new Position((int)(tensor[i * AINet.OutputParameters + 3] * KillZone.TotalWidth), (int)(tensor[i * AINet.OutputParameters + 4] * KillZone.TotalHeight)));
+                new Position((int)(data[i * AINet.OutputParameters + 3] * KillZone.TotalWidth), (int)(data[i * AINet.OutputParameters + 4] * KillZone.TotalHeight)));
             actions.Add((moveReward, moveAction));
 
-            var dashReward = (float)tensor[i * AINet.OutputParameters + 5];
+            var dashReward = data[i * AINet.OutputParameters + 5];
             var dashAction = new OperativeDashAction(i,
-                new Position((int)(tensor[i * AINet.OutputParameters + 6] * KillZone.TotalWidth), (int)(tensor[i * AINet.OutputParameters + 7] * KillZone.TotalHeight)));
+                new Position((int)(data[i * AINet.OutputParameters + 6] * KillZone.TotalWidth), (int)(data[i * AINet.OutputParameters + 7] * KillZone.TotalHeight)));
             actions.Add((dashReward, dashAction));
         }
 
@@ -133,7 +109,7 @@ public class AITrainer
         foreach (var action in actions)
         {
             if (state.IsActionValid(action.Item2))
-                return (action.Item1, action.Item2);
+                return action;
         }
 
         // no valid action
@@ -152,7 +128,10 @@ public class AITrainer
         IOperativeAction action = null!;
 
         if (Random.Shared.NextSingle() > Epsilon())
+        {
             action = GetActions(matchState);
+            _validActions.Add(action == null ? 0 : 1);
+        }
 
         if (action == null)
             action = matchState.GenerateAction();
@@ -169,12 +148,9 @@ public class AITrainer
         return action;
     }
 
-    static int _step = 0;
-
     float Epsilon()
     {
-        var epsilon = MinEpsilon + (MaxEpsilon - MinEpsilon) * MathF.Exp(EpsilonDecay * _step);
-        _step++;
+        var epsilon = MinEpsilon + (MaxEpsilon - MinEpsilon) * MathF.Exp(EpsilonDecay * _espilonStep);
         return epsilon;
     }
 
@@ -197,31 +173,36 @@ public class AITrainer
 
         var (maxNextReward, nextAction) = TensorToActions(nextState, predNext);
 
-        if (nextState.CurrentTurn != Side)
-            maxNextReward = -maxNextReward;
-
         if (nextAction == null)
-            maxNextReward = -10;
+            maxNextReward = -1;
 
         var qNew = reward + Gamma * maxNextReward;
+
+        var data = target.data<float>().ToArray();
 
 #if false
         // penalize invalid actions
         for (var i = 0; i < 20; i++)
         {
-            var shootAction = new OperativeShootAction(i, (int)(target[i * AINet.OutputParameters + 1] * 20));
+            var shootAction = new OperativeShootAction(i, (int)(data[i * AINet.OutputParameters + 1] * 20));
             if (!state.IsActionValid(shootAction))
-                target[i * AINet.OutputParameters] = -10;
+                data[i * AINet.OutputParameters] = -10;
+            else
+                if ((float)data[i * AINet.OutputParameters] < 0) data[i * AINet.OutputParameters] = 0;
 
             var moveAction = new OperativeMoveAction(i,
-                new Position((int)(target[i * AINet.OutputParameters + 3] * KillZone.TotalWidth), (int)(target[i * AINet.OutputParameters + 4] * KillZone.TotalHeight)));
+                new Position((int)(data[i * AINet.OutputParameters + 3] * KillZone.TotalWidth), (int)(data[i * AINet.OutputParameters + 4] * KillZone.TotalHeight)));
             if (!state.IsActionValid(moveAction))
-                target[i * AINet.OutputParameters] = -10;
+                data[i * AINet.OutputParameters + 2] = -10;
+            else
+                if ((float)data[i * AINet.OutputParameters + 2] < 0) data[i * AINet.OutputParameters + 2] = 0;
 
             var dashAction = new OperativeDashAction(i,
-                new Position((int)(target[i * AINet.OutputParameters + 6] * KillZone.TotalWidth), (int)(target[i * AINet.OutputParameters + 7] * KillZone.TotalHeight)));
+                new Position((int)(data[i * AINet.OutputParameters + 6] * KillZone.TotalWidth), (int)(data[i * AINet.OutputParameters + 7] * KillZone.TotalHeight)));
             if (!state.IsActionValid(dashAction))
-                target[i * AINet.OutputParameters] = -10;
+                data[i * AINet.OutputParameters + 5] = -10;
+            else
+                if ((float)data[i * AINet.OutputParameters + 5] < 0) data[i * AINet.OutputParameters + 5] = 0;
         }
 #endif
 
@@ -229,22 +210,22 @@ public class AITrainer
         switch (action)
         {
             case OperativeShootAction shoot:
-                target[action.Operative * AINet.OutputParameters] = qNew;
+                data[action.Operative * AINet.OutputParameters] = qNew;
                 break;
 
             case OperativeMoveAction move:
-                target[action.Operative * AINet.OutputParameters + 2] = qNew;
+                data[action.Operative * AINet.OutputParameters + 2] = qNew;
                 break;
 
             case OperativeDashAction dash:
-                target[action.Operative * AINet.OutputParameters + 5] = qNew;
+                data[action.Operative * AINet.OutputParameters + 5] = qNew;
                 break;
         }
 
-        target[action.Operative * AINet.OutputParameters] = qNew;
+        var t = torch.tensor(data);
 
         _optimizer.zero_grad();
-        var loss = _criterion.forward(target, pred);
+        var loss = _criterion.forward(t, pred);
         loss.backward();
         _optimizer.step();
     }
@@ -259,6 +240,10 @@ public class AITrainer
 
         foreach (var sample in samples)
             Train(sample.Item1, sample.Item2, sample.Item3, sample.Item4);
+
+        Console.WriteLine($"Epsilon: {Epsilon():P}, Memory Size: {_memory.Count}, Valid Action Ratio {_validActions.Average():P}");
+
+        _espilonStep++;
     }
 
     float ComputeReward(MatchState state, IOperativeAction action)
@@ -267,20 +252,45 @@ public class AITrainer
         if (!state.IsActionValid(action))
             return -10;
 
+        float reward = 0;
+
+        var position = state.OperativeStates[action.Operative].Position;
+        // var target = -1;
+
         switch (action)
         {
             case OperativeShootAction shoot:
-                return 2; // shooting is rewarded
+                //target = shoot.Target;
+                //reward += 5; // shooting is rewarded
+                break;
 
-            case OperativeMoveAction move: // reward if destination is on objective
-                return IsOnObjective(state, state.OperativeStates[move.Operative].Type.BaseDiameter, move.Destination) ? 5 : 0;
+            case OperativeMoveAction move:
+                position = move.Destination;
+                break;
 
-            case OperativeDashAction dash: // reward if destination is on objective
-                return IsOnObjective(state, state.OperativeStates[dash.Operative].Type.BaseDiameter, dash.Destination) ? 5 : 0;
-
-            default: // should not happen
-                return 0;
+            case OperativeDashAction dash:
+                position = dash.Destination;
+                break;
         }
+
+        // shortest distance to objective
+        var operative = state.OperativeStates[action.Operative];
+
+        if (IsOnObjective(state, operative.Type.BaseDiameter, position))
+            reward += 10;
+#if false
+        // get all enemies able to shoot
+        var enemies = state.OperativeStates.Where(x => x.Side != operative.Side && x.Status == OperativeStatus.Ready && x.Index != target).ToArray();
+        foreach (var enemy in enemies)
+        {
+            if (state.HasLineOfSight(enemy.Position, position))
+            {
+                reward -= 5;
+                break;
+            }
+        }
+#endif
+        return reward;
     }
 
     bool IsOnObjective(MatchState state, float baseDiameter, Position position)

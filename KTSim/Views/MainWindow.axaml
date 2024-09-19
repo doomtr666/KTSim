@@ -17,13 +17,13 @@
         App.axaml.cs -->
         <vm:MainWindowViewModel />
     </Design.DataContext>
-
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-        <paz:ZoomBorder Name="ZoomBorder" Stretch="None" ZoomSpeed="1.1"
-            Background="LightGray" ClipToBounds="True" Focusable="True"
-            VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
-            <cs:KillzoneViewControl Width="762" Height="559" Player="{Binding Player}" LastAction="{Binding LastAction}"/>
-        </paz:ZoomBorder>
-    </ScrollViewer>
-
+   
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" DockPanel.Dock="Top">
+            <paz:ZoomBorder Name="ZoomBorder" Stretch="None" ZoomSpeed="1.1"
+                Background="LightGray" ClipToBounds="True" Focusable="True"
+                VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+                <cs:KillzoneViewControl Width="762" Height="559" Player="{Binding Player}" LastAction="{Binding LastAction}"/>
+            </paz:ZoomBorder>
+        </ScrollViewer>
+    
 </Window>

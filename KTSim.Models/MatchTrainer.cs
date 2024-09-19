@@ -1,3 +1,4 @@
+using System.Data;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
@@ -32,10 +33,11 @@ public class MatchTrainer
 
     public int GameCount { get; private set; } = 0;
 
-    int attackerWins = 0;
-
     AITrainer _attackerAI;
-    AITrainer _defenderAI;
+    //AITrainer _defenderAI;
+
+    private MovingAverage _attackerWinRate = new MovingAverage(100);
+    private MovingAverage _defenderWinRate = new MovingAverage(100);
 
     public MatchTrainer()
     {
@@ -65,7 +67,7 @@ public class MatchTrainer
 
         // create AIs
         _attackerAI = new AITrainer(TeamSide.Attacker);
-        _defenderAI = new AITrainer(TeamSide.Defender);
+        //_defenderAI = new AITrainer(TeamSide.Defender);
     }
 
     public Match GenerateMatch()
@@ -82,32 +84,31 @@ public class MatchTrainer
 
             if (matchState.CurrentTurn == TeamSide.Attacker)
             {
-                action = matchState.GenerateAction();
+                action = _attackerAI.GenerateAction(matchState);
+                //_attackerAI.TrainLast();
             }
             else
             {
-                action = _defenderAI.GenerateAction(matchState);
-                _defenderAI.TrainLast();
+                //action = _defenderAI.GenerateAction(matchState);
+                //_defenderAI.TrainLast();
+                action = matchState.GenerateAction();
             }
 
             playedActions.Add(action);
             matchState.ApplyAction(action);
         }
 
-        //_attackerAI.TrainBatch();
-        _defenderAI.TrainBatch();
+
+        _attackerAI.TrainBatch();
+        //_defenderAI.TrainBatch();
 
         sw.Stop();
 
         GameCount++;
-        _log.LogInformation($"Match {GameCount} finished ({sw.Elapsed.TotalMilliseconds} ms), Attacker: {matchState.AttackerScore}, Defender: {matchState.DefenderScore}, Attacker Win Rate: {(float)attackerWins / GameCount:P} Defender Win Rate: {(float)(GameCount - attackerWins) / GameCount:P}");
+        _attackerWinRate.Add(matchState.AttackerScore > matchState.DefenderScore ? 1 : 0);
+        _defenderWinRate.Add(matchState.AttackerScore < matchState.DefenderScore ? 1 : 0);
 
-
-
-        if (matchState.AttackerScore > matchState.DefenderScore)
-        {
-            attackerWins++;
-        }
+        _log.LogInformation($"Match {GameCount} finished ({sw.Elapsed.TotalMilliseconds} ms), Attacker: {matchState.AttackerScore}, Defender: {matchState.DefenderScore}, Attacker Win Rate: {_attackerWinRate.Average():P} Defender Win Rate: {_defenderWinRate.Average():P}");
 
 
         return new Match(_killZone, _initialState.Copy().OperativeStates, playedActions.ToArray(), matchState.InitiativeRolls, matchState.AttackerScore, matchState.DefenderScore);

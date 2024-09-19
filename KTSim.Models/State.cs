@@ -261,7 +261,7 @@ public class MatchState
 
         foreach (var enemy in enemies)
         {
-            if (IsTargetVisible(operative.Position, enemy.Position))
+            if (HasLineOfSight(operative.Position, enemy.Position))
                 return new OperativeShootAction(operative.Index, enemy.Index);
         }
 
@@ -349,7 +349,7 @@ public class MatchState
         return true;
     }
 
-    bool IsTargetVisible(Position source, Position target)
+    public bool HasLineOfSight(Position source, Position target)
     {
         var segment = new Segment(source, target);
 
@@ -445,7 +445,7 @@ public class MatchState
                 }
 
                 // check if the target is visible
-                if (!IsTargetVisible(OperativeStates[shootAction.Operative].Position, OperativeStates[shootAction.Target].Position))
+                if (!HasLineOfSight(OperativeStates[shootAction.Operative].Position, OperativeStates[shootAction.Target].Position))
                 {
                     //_log.LogError($"Target {shootAction.Target} is not visible");
                     return false;
